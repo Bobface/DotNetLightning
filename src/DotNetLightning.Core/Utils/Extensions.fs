@@ -220,3 +220,18 @@ module Seq =
         Seq.zip (Seq.initInfinite id)
         >> Seq.skipWhile (fun (i, _) -> i < num)
         >> Seq.map snd
+
+    let tryExactlyOne (s: seq<'T>) =
+        try
+            Some (s.Single())
+        with
+        | :? InvalidOperationException ->
+            None
+
+    let tryHead (s: seq<'T>) =
+        try
+            Some (s.First())
+        with
+        | :? InvalidOperationException ->
+            None
+            
