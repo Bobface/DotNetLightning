@@ -3,6 +3,8 @@ namespace DotNetLightning.Utils
 open System.IO
 open NBitcoin
 
+open DotNetLightning.Core.Utils.Extensions
+
 [<AutoOpen>]
 module NBitcoinExtensions =
     module FeeRate =

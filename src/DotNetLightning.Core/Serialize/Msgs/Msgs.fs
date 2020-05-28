@@ -1454,12 +1454,12 @@ type QueryShortChannelIdsMsg = {
                 |> Seq.choose(function QueryShortChannelIdsTLV.QueryFlags (_, y) -> Some (y) | _ -> None)
                 |> Seq.tryExactlyOne
             match queryFlags with
-            | None ->
-                this.ShortIds <- shortIds
-                this.TLVs <- tlvs
             | Some flags ->
                 if (shortIds.Length <> (flags |> Seq.length)) then
                     raise <| FormatException(sprintf "query_short_channel_ids have different length for short_ids(%A) and query_flags! (%A)" shortIds flags)
+                this.ShortIds <- shortIds
+                this.TLVs <- tlvs
+            | None ->
                 this.ShortIds <- shortIds
                 this.TLVs <- tlvs
         member this.Serialize(ls) =
