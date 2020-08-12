@@ -31,3 +31,19 @@ jobs:
     - name: Run other tests
       run: |
         dotnet test
+
+  build_old_mono:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: |
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y mono-complete mono-xbuild fsharp
+        wget https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+        sudo dpkg -i packages-microsoft-prod.deb
+        sudo apt-get update -y
+        sudo apt-get install -y apt-transport-https
+        sudo apt-get update -y
+        sudo apt-get install -y dotnet-sdk-3.1
+        dotnet restore src/DotNetLightning.Core/DotNetLightning.Core.fsproj
+        dotnet msbuild src/DotNetLightning.Core/DotNetLightning.Core.fsproj
