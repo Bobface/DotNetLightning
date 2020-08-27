@@ -2,7 +2,7 @@ namespace ResultUtils
 
 [<RequireQualifiedAccess>]
 module List =
-    let rec private traverseResultM' (state: Result<_, _>) (f: _ -> Result<_, _>) xs =
+    let rec private traverseResultM' (state: CustomResult.Result<_, _>) (f: _ -> CustomResult.Result<_, _>) xs =
         match xs with
         | [] ->
             state
@@ -13,11 +13,11 @@ module List =
                 return ys @ [y]
             }
             match r with
-            | Ok _ -> traverseResultM' r f xs
-            | Error _ -> r
+            | CustomResult.Ok _ -> traverseResultM' r f xs
+            | CustomResult.Error _ -> r
             
     let traverseResultM f xs =
-        traverseResultM' (Ok []) f xs
+        traverseResultM' (CustomResult.Ok []) f xs
         
     let sequenceResultM xs =
         traverseResultM id xs
@@ -29,14 +29,14 @@ module List =
             let fR =
                 f x |> Result.mapError List.singleton
             match state, fR with
-            | Ok ys, Ok y ->
-                traverseResultA' (Ok (ys @ [y])) f xs
-            | Error errs, Error e ->
-                traverseResultA' (Error(errs @ e)) f xs
-            | Ok _, Error e | Error e , Ok _ ->
-                traverseResultA' (Error e) f xs
+            | CustomResult.Ok ys, CustomResult.Ok y ->
+                traverseResultA' (CustomResult.Ok (ys @ [y])) f xs
+            | CustomResult.Error errs, CustomResult.Error e ->
+                traverseResultA' (CustomResult.Error(errs @ e)) f xs
+            | CustomResult.Ok _, CustomResult.Error e | CustomResult.Error e , CustomResult.Ok _ ->
+                traverseResultA' (CustomResult.Error e) f xs
 
     let traverseResultA f xs =
-        traverseResultA' (Ok []) f xs
+        traverseResultA' (CustomResult.Ok []) f xs
     let sequenceResultA xs =
         traverseResultA id xs

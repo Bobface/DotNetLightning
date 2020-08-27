@@ -6,10 +6,10 @@ module ResultOption =
     Result.map(Option.map f) ro
 
   let bind f ro =
-    Result.bind (function | Some x -> f x | None -> Ok None) ro
+    Result.bind (function | Some x -> f x | None -> CustomResult.Ok None) ro
 
   let retn x =
-    Ok (Some x)
+    CustomResult.Ok (Some x)
 
   let apply f x =
     bind (fun f' ->

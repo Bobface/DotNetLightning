@@ -7,11 +7,11 @@ module Validation =
 
   let apply f x =
     match f, x with
-    | Ok f, Ok x -> Ok (f x)
-    | Error errs, Ok _ | Ok _, Error errs -> Error errs
-    | Error errors1, Error errors2 -> Error (errors1 @ errors2)
+    | CustomResult.Ok f, CustomResult.Ok x -> CustomResult.Ok (f x)
+    | CustomResult.Error errs, CustomResult.Ok _ | CustomResult.Ok _, CustomResult.Error errs -> CustomResult.Error errs
+    | CustomResult.Error errors1, CustomResult.Error errors2 -> CustomResult.Error (errors1 @ errors2)
 
-  let retn x = ofResult (Ok x)
+  let retn x = ofResult (CustomResult.Ok x)
 
   let map2 f x y =
     apply (apply (retn f ) x ) y
@@ -19,6 +19,6 @@ module Validation =
   let map3 f x y z =
     apply (map2 f x y) z
     
-  let inline lift2 (f: 'a -> 'b -> 'c) (x: Result<'a, _>) (y: Result<'b, _>): Result<'c, _> =
-    apply (apply (Ok f) x) y
+  let inline lift2 (f: 'a -> 'b -> 'c) (x: CustomResult.Result<'a, _>) (y: CustomResult.Result<'b, _>): CustomResult.Result<'c, _> =
+    apply (apply (CustomResult.Ok f) x) y
 

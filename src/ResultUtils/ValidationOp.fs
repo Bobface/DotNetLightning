@@ -2,7 +2,7 @@ namespace ResultUtils
 
 [<AutoOpen>]
 module ValidationOp =
-  let inline (<!>) f (x: Result<'a, 'b list>) = Result.map f x
+  let inline (<!>) f (x: CustomResult.Result<'a, 'b list>) = Result.map f x
   let inline (<!^>) f x =
     x
     |> Result.mapError List.singleton
