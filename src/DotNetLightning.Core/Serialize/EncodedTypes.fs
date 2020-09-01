@@ -2,7 +2,7 @@ namespace DotNetLightning.Serialize
 
 open System.IO
 
-open ResultUtils
+open ResultUtils.Portability
 
 type QueryFlags = private QueryFlags of uint8
     with

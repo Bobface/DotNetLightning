@@ -15,6 +15,7 @@ open DotNetLightning.Core.Utils.Extensions
 open DotNetLightning.Serialize
 
 open ResultUtils
+open ResultUtils.Portability
 
 // #region serialization
 type P2PDecodeError =

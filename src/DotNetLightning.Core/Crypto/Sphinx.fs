@@ -7,6 +7,7 @@ open DotNetLightning.Serialize
 open DotNetLightning.Serialize.Msgs
 
 open ResultUtils
+open ResultUtils.Portability
 
 module Sphinx =
     open NBitcoin.Crypto

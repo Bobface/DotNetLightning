@@ -1,5 +1,7 @@
 namespace ResultUtils
 
+open ResultUtils.Portability
+
 [<RequireQualifiedAccess>]
 module List =
     let rec private traverseResultM' (state: Result<_, _>) (f: _ -> Result<_, _>) xs =
@@ -27,7 +29,7 @@ module List =
         | [] -> state
         | x :: xs ->
             let fR =
-                f x |> ResultExtensions.mapError List.singleton
+                f x |> Result.mapError List.singleton
             match state, fR with
             | Ok ys, Ok y ->
                 traverseResultA' (Ok (ys @ [y])) f xs

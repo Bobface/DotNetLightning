@@ -4,7 +4,7 @@ open NBitcoin
 open NBitcoin.Crypto
 open DotNetLightning.Utils
 
-open ResultUtils
+open ResultUtils.Portability
 
 type InsertRevocationKeyError =
     | UnexpectedCommitmentNumber of got: CommitmentNumber * expected: CommitmentNumber

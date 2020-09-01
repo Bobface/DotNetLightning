@@ -11,6 +11,7 @@ open DotNetLightning.Routing.Graph
 open NBitcoin
 
 open ResultUtils
+open ResultUtils.Portability
 
 module Routing =
     

@@ -1,5 +1,4 @@
-namespace ResultUtils
-
+namespace ResultUtils.Portability
 [<StructuralEquality; StructuralComparison>]
 [<CompiledName("FSharpResult`2")>]
 [<Struct>]
@@ -7,8 +6,12 @@ type Result<'T,'TError> =
   | Ok of ResultValue:'T 
   | Error of ErrorValue:'TError
 
+namespace ResultUtils
+
+open ResultUtils.Portability
+
 [<RequireQualifiedAccess>]
-module ResultExtensions =
+module Result =
 
   let isOk x =
     match x with

@@ -1,12 +1,14 @@
 namespace ResultUtils
 
+open ResultUtils.Portability
+
 [<RequireQualifiedAccess>]
 module ResultOption =
   let map f ro =
-    ResultExtensions.map(Option.map f) ro
+    Result.map(Option.map f) ro
 
   let bind f ro =
-    ResultExtensions.bind (function | Some x -> f x | None -> Ok None) ro
+    Result.bind (function | Some x -> f x | None -> Ok None) ro
 
   let retn x =
     Ok (Some x)

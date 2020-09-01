@@ -6,6 +6,7 @@ open System.Text
 open DotNetLightning.Core.Utils.Extensions
 
 open ResultUtils
+open ResultUtils.Portability
 
 type FeaturesSupport =
     | Mandatory
@@ -221,7 +222,7 @@ type FeatureBit private (bitArray) =
     static member TryParse(str: string) =
         result {
             let! ba = BitArray.TryParse str
-            return! ba |> FeatureBit.TryCreate |> ResultExtensions.mapError(fun fe -> fe.ToString())
+            return! ba |> FeatureBit.TryCreate |> Result.mapError(fun fe -> fe.ToString())
         }
         
     override this.ToString() =

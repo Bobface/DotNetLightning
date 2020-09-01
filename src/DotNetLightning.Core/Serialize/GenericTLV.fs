@@ -3,6 +3,7 @@ namespace DotNetLightning.Serialize
 open System
 open DotNetLightning.Core.Utils.Extensions
 open ResultUtils
+open ResultUtils.Portability
 
 type GenericTLV = {
     Type: uint64

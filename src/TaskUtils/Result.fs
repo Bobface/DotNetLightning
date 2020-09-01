@@ -3,6 +3,7 @@ namespace TaskUtils
 open System.Threading.Tasks
 open FSharp.Control.Tasks
 open ResultUtils
+open ResultUtils.Portability
 
 [<RequireQualifiedAccess>]
 module Result =
@@ -23,7 +24,7 @@ module List =
     let mutable index = 0
     let xs = xs |> List.toArray
     task {
-        while state |> ResultExtensions.isOk && index < xs.Length do
+        while state |> Result.isOk && index < xs.Length do
             let! r = xs |> Array.item index |> f
             index <- index + 1 
             match (r, state) with
@@ -35,7 +36,7 @@ module List =
                 ()
         return 
             state
-            |> ResultExtensions.map List.rev
+            |> Result.map List.rev
     }
   let traverseTaskResultM f xs =
     traverseTaskResultM' f xs
@@ -60,7 +61,7 @@ module List =
                 state <- Error [e]
         return
             state
-            |> ResultExtensions.eitherMap List.rev List.rev
+            |> Result.eitherMap List.rev List.rev
     }
 
   let traverseTaskResultA f xs =

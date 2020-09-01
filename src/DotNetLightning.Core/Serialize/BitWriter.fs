@@ -5,7 +5,7 @@ open System.Collections
 open System.Text
 open System.Text
 
-open ResultUtils
+open ResultUtils.Portability
 
 type BitReader(ba: BitArray, bitCount: int) =
     

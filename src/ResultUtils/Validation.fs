@@ -1,9 +1,11 @@
 namespace ResultUtils
 
+open ResultUtils.Portability
+
 [<RequireQualifiedAccess>]
 module Validation =
   let ofResult x =
-    ResultExtensions.mapError List.singleton x
+    Result.mapError List.singleton x
 
   let apply f x =
     match f, x with

@@ -9,6 +9,7 @@ open DotNetLightning.Serialize.Msgs
 open DotNetLightning.Utils.Aether
 
 open ResultUtils
+open ResultUtils.Portability
 
 type PeerHandleError = {
     /// Used to indicate that we probably can't make any future connections to this peer, implying
@@ -94,7 +95,7 @@ module Peer =
                     
                 let packet = reader (int len + 16)
                 let! (b, newPCE) = pce |> PeerChannelEncryptor.decryptMessage packet
-                let! msg = LightningMsg.fromBytes b |> ResultExtensions.mapError(PeerError.P2PMessageDecodeError)
+                let! msg = LightningMsg.fromBytes b |> Result.mapError(PeerError.P2PMessageDecodeError)
                 return
                     match msg with
                     | :? ErrorMsg as msg ->

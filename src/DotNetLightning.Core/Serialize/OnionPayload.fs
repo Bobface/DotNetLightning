@@ -6,6 +6,7 @@ open DotNetLightning.Utils
 open DotNetLightning.Core.Utils.Extensions
 
 open ResultUtils
+open ResultUtils.Portability
 
 type OnionRealm0HopData = {
     ShortChannelId: ShortChannelId
@@ -36,7 +37,7 @@ type OnionPayload =
         match bytes.[0] with
         | 0uy ->
             OnionRealm0HopData.FromBytes(bytes.[1..])
-            |> ResultExtensions.map(Legacy)
+            |> Result.map(Legacy)
         | _ ->
             result {
                 let! l, bytes = bytes.TryPopVarInt()
@@ -44,7 +45,7 @@ type OnionPayload =
                 let l = int32 l
                 let! tlvs =
                     GenericTLV.TryCreateManyFromBytes(bytes.[0..(l - 1)])
-                    |> ResultExtensions.map (Array.map(HopPayloadTLV.FromGenericTLV))
+                    |> Result.map (Array.map(HopPayloadTLV.FromGenericTLV))
                 let hmac = uint256(bytes.[l..(l + 31)], false)
                 return (tlvs, hmac) |> TLVPayload
             }

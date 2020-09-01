@@ -9,6 +9,7 @@ open DotNetLightning.Chain
 open DotNetLightning.Serialize.Msgs
 
 open ResultUtils
+open ResultUtils.Portability
 
 [<RequireQualifiedAccess; CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal Commitments =
@@ -159,7 +160,7 @@ module internal Commitments =
         | Some htlc ->
             let ad = htlc.PaymentHash.ToBytes()
             let rawPacket = htlc.OnionRoutingPacket.ToBytes()
-            Sphinx.parsePacket localKey ad rawPacket |> ResultExtensions.mapError(ChannelError.CryptoError)
+            Sphinx.parsePacket localKey ad rawPacket |> Result.mapError(ChannelError.CryptoError)
             >>= fun ({ SharedSecret = ss}) ->
                 let reason =
                     op.Reason
@@ -365,11 +366,11 @@ module internal Commitments =
                     match htlc with
                     | :? HTLCTimeoutTx ->
                         (Transactions.checkTxFinalized (htlc.Value) (0) (seq [(remoteHTLCPubKey, remoteS)]))
-                        |> ResultExtensions.map(box)
+                        |> Result.map(box)
                     // we cannot check that htlc-success tx are spendable because we need the payment preimage; thus we only check the remote sig
                     | :? HTLCSuccessTx ->
                         (Transactions.checkSigAndAdd (htlc) (remoteS) (remoteHTLCPubKey))
-                        |> ResultExtensions.map(box)
+                        |> Result.map(box)
                     | _ -> failwith "Unreachable!"
 
                 let! txList =

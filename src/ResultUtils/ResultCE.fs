@@ -1,6 +1,7 @@
 namespace ResultUtils
 
 open System
+open ResultUtils.Portability
 
 [<AutoOpen>]
 module ResultCE =
@@ -17,7 +18,7 @@ module ResultCE =
     member __.Bind
         (result: Result<'T, 'TError>, binder: 'T -> Result<'U, 'TError>)
         : Result<'U, 'TError> =
-      ResultExtensions.bind binder result
+      Result.bind binder result
 
     member __.Delay
         (generator: unit -> Result<'T, 'TError>)
@@ -74,14 +75,14 @@ module ResultCEExtensions =
   type ResultBuilder with
 
     member __.ReturnFrom (result: Choice<'T, 'TError>) : Result<'T, 'TError> =
-      ResultExtensions.ofChoice result
+      Result.ofChoice result
 
     member __.Bind
         (result: Choice<'T, 'TError>, binder: 'T -> Result<'U, 'TError>)
         : Result<'U, 'TError> =
         result
-        |> ResultExtensions.ofChoice
-        |> ResultExtensions.bind binder 
+        |> Result.ofChoice
+        |> Result.bind binder 
 
 
 

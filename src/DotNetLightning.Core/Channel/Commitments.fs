@@ -9,6 +9,7 @@ open DotNetLightning.Transactions
 open DotNetLightning.Serialize.Msgs
 
 open ResultUtils
+open ResultUtils.Portability
 
 type LocalChanges = {
     Proposed: IUpdateMsg list

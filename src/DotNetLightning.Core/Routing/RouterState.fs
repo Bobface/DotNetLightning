@@ -7,6 +7,7 @@ open DotNetLightning.Utils
 open Graph
 
 open ResultUtils
+open ResultUtils.Portability
         
 type RouteParams = {
     Randomize: bool

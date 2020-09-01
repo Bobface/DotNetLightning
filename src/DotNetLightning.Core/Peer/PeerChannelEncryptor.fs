@@ -11,6 +11,7 @@ open DotNetLightning.Utils.Aether.Operators
 open DotNetLightning.Crypto
 
 open ResultUtils
+open ResultUtils.Portability
 
 [<AutoOpen>]
 module PeerChannelEncryptor =
@@ -304,7 +305,7 @@ module PeerChannelEncryptor =
             }
         let internal decryptWithAD(n: uint64, key: uint256, ad: byte[], cipherText: ReadOnlySpan<byte>): Result<byte[], _> =
             crypto.decryptWithAD(n, key, ad, cipherText)
-            |> ResultExtensions.mapError(PeerError.CryptoError)
+            |> Result.mapError(PeerError.CryptoError)
 
         let internal hkdfExtractExpand(salt: byte[], ikm: byte[]) =
             let prk = Hashes.HMACSHA256(salt, ikm)

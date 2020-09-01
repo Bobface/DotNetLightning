@@ -10,6 +10,7 @@ open System.IO
 open System.IO.Compression
 
 open ResultUtils
+open ResultUtils.Portability
 
 module Decoder =
     let private tryDecode (encodingType: EncodingType) (bytes : byte[]) =
@@ -66,7 +67,7 @@ module Decoder =
             |> Array.toList
             |> List.map (QueryFlags.TryCreate)
             |> List.sequenceResultM
-            |> ResultExtensions.map List.toArray
+            |> Result.map List.toArray
         flags
 
     let tryDecodeQueryFlags encodingType d =
@@ -99,11 +100,11 @@ module Decoder =
         
     let private bytesToTimestampPair x =
         bytesToUint32Pair x
-        |> ResultExtensions.map(Array.map(fun (a, b) -> { TwoTimestamps.NodeId1 = a; NodeId2 = b }))
+        |> Result.map(Array.map(fun (a, b) -> { TwoTimestamps.NodeId1 = a; NodeId2 = b }))
         
     let tryBytesToChecksumPair x =
         bytesToUint32Pair x
-        |> ResultExtensions.map(Array.map(fun (a, b) -> { TwoChecksums.NodeId1 = a; NodeId2 = b }))
+        |> Result.map(Array.map(fun (a, b) -> { TwoChecksums.NodeId1 = a; NodeId2 = b }))
        
     let bytesToChecksumPair =
         tryBytesToChecksumPair >> unwrap

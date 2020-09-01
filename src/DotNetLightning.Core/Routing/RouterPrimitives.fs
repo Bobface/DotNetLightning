@@ -8,12 +8,13 @@ open DotNetLightning.Serialize.Msgs
 open Graph
 
 open ResultUtils
+open ResultUtils.Portability
 
 [<AutoOpen>]
 module RouterPrimitives =
     let checkUpdate(x: ChannelUpdateMsg option, msg ) =
         match x with
-        | Some x -> ResultExtensions.requireTrue msg (x.IsNode1)
+        | Some x -> Result.requireTrue msg (x.IsNode1)
         | None -> Ok()
         
     let isNode1(localNodeId: NodeId, remoteNodeId: NodeId) =

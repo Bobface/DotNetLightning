@@ -9,6 +9,7 @@ open System.Text
 open DotNetLightning.Utils
 
 open ResultUtils
+open ResultUtils.Portability
 
 /// See: https://github.com/lightninglabs/LSAT/blob/master/macaroons.md#target-services
 type Service = {

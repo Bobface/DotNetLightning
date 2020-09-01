@@ -15,6 +15,7 @@ open NBitcoin.Crypto
 open NBitcoin.DataEncoders
 
 open ResultUtils
+open ResultUtils.Portability
 
 
 module private Helpers =
@@ -329,7 +330,7 @@ type TaggedFields = {
         if (descriptions.Length = 1 && dHashes.Length = 1) then Error("both 'h' and 'd' field exists") else
         if (descriptions.Length <> 1 && dHashes.Length <> 1) then Error("must have either description hash or description") else
         () |> Ok
-        |> ResultExtensions.mapError(fun s -> "Invalid BOLT11! " + s)
+        |> Result.mapError(fun s -> "Invalid BOLT11! " + s)
 type private Bolt11Data = {
     Timestamp: DateTimeOffset
     TaggedFields: TaggedFields
@@ -464,7 +465,7 @@ type private Bolt11Data = {
                                 let! fb =
                                     bits
                                     |> FeatureBit.TryCreate
-                                    |> ResultExtensions.mapError(fun x ->
+                                    |> Result.mapError(fun x ->
                                         "Invalid BOLT11! Feature field is bogus " + x.ToString())
                                 let features = fb |> FeaturesTaggedField
                                 return! loop r { acc with Fields = features :: acc.Fields } afterReadPosition
@@ -672,7 +673,7 @@ type PaymentRequest = private {
     /// signer must sign by node_secret which corresponds to node_id
     static member TryCreate (prefix: string, amount: LNMoney option, timestamp, nodeId, tags: TaggedFields, signer: IMessageSigner) =
         result {
-            do! amount |> function None -> Ok() | Some a -> ResultExtensions.requireTrue "amount must be larger than 0" (a > LNMoney.Zero)
+            do! amount |> function None -> Ok() | Some a -> Result.requireTrue "amount must be larger than 0" (a > LNMoney.Zero)
             do! tags.CheckSanity()
             let r = {
                 Prefix = prefix

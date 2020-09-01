@@ -4,6 +4,7 @@ open System
 open DotNetLightning.Utils
 
 open ResultUtils
+open ResultUtils.Portability
 
 [<RequireQualifiedAccess>]
 module Amount =
@@ -25,7 +26,7 @@ module Amount =
         | a when a.[a.Length - 1] = 'p' ->
             (parseCore (a.Substring(0, a.Length - 1)) 1L)
             // 1 milli-satoshis == 10 pico-bitcoin, so we must divide it here.
-            |> ResultExtensions.map(fun lnMoney -> (lnMoney.MilliSatoshi / 10L) |> LNMoney.MilliSatoshis)
+            |> Result.map(fun lnMoney -> (lnMoney.MilliSatoshi / 10L) |> LNMoney.MilliSatoshis)
         | a when a.[a.Length - 1] = 'n' ->
             parseCore (a.Substring(0, a.Length - 1)) 100L
         | a when a.[a.Length - 1] = 'u' ->

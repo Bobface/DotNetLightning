@@ -6,6 +6,7 @@ open DotNetLightning.Utils
 open DotNetLightning.Utils.Aether
 
 open ResultUtils
+open ResultUtils.Portability
 
 type internal Direction =
     | In

@@ -11,6 +11,7 @@ open DotNetLightning.Transactions
 open NBitcoin
 
 open ResultUtils
+open ResultUtils.Portability
 
 type ChannelError =
     | CryptoError of CryptoError
@@ -295,13 +296,13 @@ module internal ChannelError =
         (height, depth) |> OnceConfirmedFundingTxHasBecomeUnconfirmed |> Error
     
     let expectTransactionError result =
-        ResultExtensions.mapError (List.singleton >> TransactionRelatedErrors) result
+        Result.mapError (List.singleton >> TransactionRelatedErrors) result
         
     let expectTransactionErrors result =
-        ResultExtensions.mapError (TransactionRelatedErrors) result
+        Result.mapError (TransactionRelatedErrors) result
         
     let expectFundingTxError msg =
-        ResultExtensions.mapError(FundingTxNotGiven) msg
+        Result.mapError(FundingTxNotGiven) msg
         
     let invalidRevokeAndACK msg e =
         InvalidRevokeAndACKError.Create msg ([e]) |> InvalidRevokeAndACK |> Error

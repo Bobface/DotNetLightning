@@ -10,6 +10,7 @@ open System.Linq
 open System.Diagnostics
 open DotNetLightning.Core.Utils.Extensions
 open ResultUtils
+open ResultUtils.Portability
 
 [<AutoOpen>]
 module Primitives =
@@ -399,7 +400,7 @@ module Primitives =
             | _ -> err
         static member ParseUnsafe(s: string) =
             ShortChannelId.TryParse s
-            |> ResultExtensions.defaultWith (fun _ -> raise <| FormatException(sprintf "Failed to parse %s" s))
+            |> Result.defaultWith (fun _ -> raise <| FormatException(sprintf "Failed to parse %s" s))
 
     type UserId = UserId of uint64
     type Delimiter =
