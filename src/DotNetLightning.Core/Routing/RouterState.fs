@@ -1,12 +1,12 @@
 namespace DotNetLightning.Routing
 
-open ResultUtils
 open System.Collections.Generic
 open DotNetLightning.Payment
 open DotNetLightning.Serialize.Msgs
 open DotNetLightning.Utils
 open Graph
 
+open ResultUtils
         
 type RouteParams = {
     Randomize: bool
@@ -29,8 +29,8 @@ type RouteParams = {
                 | false -> None
                 | true ->
                     match WeightRatios.TryCreate(conf.SearchRatioCLTV, conf.SearchRatioChannelAge, conf.SearchRatioChannelCapacity) with
-                    | CustomResult.Ok s -> Some s
-                    | CustomResult.Error _ -> None
+                    | Ok s -> Some s
+                    | Error _ -> None
         }
 
 type RouteRequest = private {
@@ -76,12 +76,12 @@ type RouteResponse = private {
     with
     static member TryCreate (hops: ChannelHop seq, ignoredNodes, ignoredChannels, ?allowEmpty) =
         let allowEmpty = Option.defaultValue false allowEmpty
-        if allowEmpty || (hops |> Seq.isEmpty |> not) then CustomResult.Error("Route cannot be empty") else
+        if allowEmpty || (hops |> Seq.isEmpty |> not) then Error("Route cannot be empty") else
         {
             Hops = hops
             IgnoredNodes = ignoredNodes
             IgnoredChannels = ignoredChannels
-        } |> CustomResult.Ok
+        } |> Ok
 
 type RoutingState = {
     Channels: PublicChannel seq

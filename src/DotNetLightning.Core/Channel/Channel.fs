@@ -1,7 +1,5 @@
 namespace DotNetLightning.Channel
 
-open ResultUtils
-
 open DotNetLightning.Utils
 open DotNetLightning.Utils.NBitcoinExtensions
 open DotNetLightning.Utils.Aether
@@ -12,8 +10,10 @@ open DotNetLightning.Serialize.Msgs
 open NBitcoin
 open System
 
+open ResultUtils
 
-type ProvideFundingTx = IDestination * Money * FeeRatePerKw -> CustomResult.Result<FinalizedTx * TxOutIndex, string> 
+
+type ProvideFundingTx = IDestination * Money * FeeRatePerKw -> Result<FinalizedTx * TxOutIndex, string> 
 type Channel = {
     Config: ChannelConfig
     KeysRepository: IKeysRepository
@@ -93,7 +93,7 @@ module Channel =
             let nextData =
                 ClosingData.Create (d.ChannelId, d.Commitments, None, DateTime.Now, (d.ClosingTxProposed |> List.collect id |> List.map (fun tx -> tx.UnsignedTx)), closingTx)
             [ MutualClosePerformed (closingTx, nextData) ]
-            |> CustomResult.Ok
+            |> Ok
 
         let claimCurrentLocalCommitTxOutputs (keyRepo: IKeysRepository, channelPubKeys: ChannelPubKeys, commitments: Commitments, commitTx: CommitTx) =
             result {
@@ -108,7 +108,7 @@ module Channel =
 
     let makeChannelReestablish (keyRepo: IKeysRepository)
                                (data: Data.IHasCommitments)
-                                   : CustomResult.Result<ChannelEvent list, ChannelError> =
+                                   : Result<ChannelEvent list, ChannelError> =
         let commitments = data.Commitments
         let chanPrivateKeys = keyRepo.GetChannelKeys commitments.LocalParams.IsFunder
         let commitmentSeed = chanPrivateKeys.CommitmentSeed
@@ -126,9 +126,9 @@ module Channel =
                         commitmentSeed.DeriveCommitmentPubKey commitments.RemoteCommit.Index
                 }
             }
-        [ WeSentChannelReestablish ourChannelReestablish ] |> CustomResult.Ok
+        [ WeSentChannelReestablish ourChannelReestablish ] |> Ok
 
-    let executeCommand (cs: Channel) (command: ChannelCommand): CustomResult.Result<ChannelEvent list, ChannelError> =
+    let executeCommand (cs: Channel) (command: ChannelCommand): Result<ChannelEvent list, ChannelError> =
         match cs.State, command with
 
         // --------------- open channel procedure: case we are funder -------------
@@ -255,7 +255,7 @@ module Channel =
             }
         // --------------- open channel procedure: case we are fundee -------------
         | WaitForInitInternal, CreateInbound inputInitFundee ->
-            [ NewInboundChannelStarted({ InitFundee = inputInitFundee }) ] |> CustomResult.Ok
+            [ NewInboundChannelStarted({ InitFundee = inputInitFundee }) ] |> Ok
 
         | WaitForFundingConfirmed state, CreateChannelReestablish ->
             makeChannelReestablish cs.KeysRepository state
@@ -289,7 +289,7 @@ module Channel =
                 return [ WeAcceptedOpenChannel(acceptChannelMsg, data) ]
             }
         | WaitForOpenChannel _state, ChannelCommand.Close _spk ->
-            [ ChannelEvent.Closed ] |> CustomResult.Ok
+            [ ChannelEvent.Closed ] |> Ok
 
         | WaitForFundingCreated state, ApplyFundingCreated msg ->
             result {
@@ -347,10 +347,10 @@ module Channel =
                 return [ WeAcceptedFundingCreated(msgToSend, nextState) ]
             }
         | WaitForFundingConfirmed _state, ApplyFundingLocked msg ->
-            [ TheySentFundingLocked msg ] |> CustomResult.Ok
+            [ TheySentFundingLocked msg ] |> Ok
         | WaitForFundingConfirmed state, ApplyFundingConfirmedOnBC(height, txindex, depth) ->
             if state.Commitments.RemoteParams.MinimumDepth > depth then
-                [] |> CustomResult.Ok
+                [] |> Ok
             else
                 let chanPrivateKeys = cs.KeysRepository.GetChannelKeys state.Commitments.LocalParams.IsFunder
                 let nextPerCommitmentPoint =
@@ -374,12 +374,12 @@ module Channel =
                 
                 match (state.Deferred) with
                 | None ->
-                    [ FundingConfirmed nextState; WeSentFundingLocked msgToSend ] |> CustomResult.Ok
+                    [ FundingConfirmed nextState; WeSentFundingLocked msgToSend ] |> Ok
                 | Some msg ->
-                    [ FundingConfirmed nextState; WeSentFundingLocked msgToSend; WeResumedDelayedFundingLocked msg ] |> CustomResult.Ok
+                    [ FundingConfirmed nextState; WeSentFundingLocked msgToSend; WeResumedDelayedFundingLocked msg ] |> Ok
         | WaitForFundingLocked _state, ApplyFundingConfirmedOnBC(height, _txindex, depth) ->
             if (cs.Config.ChannelHandshakeConfig.MinimumDepth <= depth) then
-                [] |> CustomResult.Ok
+                [] |> Ok
             else
                 onceConfirmedFundingTxHasBecomeUnconfirmed(height, depth)
         | WaitForFundingLocked state, ApplyFundingLocked msg ->
@@ -404,9 +404,9 @@ module Channel =
                                   LocalShutdown = None
                                   RemoteShutdown = None
                                   ChannelId = state.ChannelId }
-                [ BothFundingLocked nextState ] |> CustomResult.Ok
+                [ BothFundingLocked nextState ] |> Ok
             else
-                [] |> CustomResult.Ok
+                [] |> Ok
 
         // ---------- normal operation ---------
         | ChannelState.Normal state, MonoHopUnidirectionalPayment op when state.LocalShutdown.IsSome || state.RemoteShutdown.IsSome ->
@@ -533,15 +533,15 @@ module Channel =
                         cm.RemoteCommit.Index
                         msg.PerCommitmentSecret
                 match remotePerCommitmentSecretsOpt with
-                | CustomResult.Error err -> invalidRevokeAndACK msg err.Message
-                | CustomResult.Ok remotePerCommitmentSecrets ->
+                | Error err -> invalidRevokeAndACK msg err.Message
+                | Ok remotePerCommitmentSecrets ->
                     let commitments1 = { cm with LocalChanges = { cm.LocalChanges with Signed = []; ACKed = cm.LocalChanges.ACKed @ cm.LocalChanges.Signed }
                                                  RemoteChanges = { cm.RemoteChanges with Signed = [] }
                                                  RemoteCommit = theirNextCommit
                                                  RemoteNextCommitInfo = RemoteNextCommitInfo.Revoked msg.NextPerCommitmentPoint
                                                  RemotePerCommitmentSecrets = remotePerCommitmentSecrets }
                     Console.WriteLine("WARNING: revocation is not implemented yet")
-                    CustomResult.Ok [ WeAcceptedRevokeAndACK(commitments1) ]
+                    Ok [ WeAcceptedRevokeAndACK(commitments1) ]
 
         | ChannelState.Normal state, ChannelCommand.Close cmd ->
             let localSPK = cmd.ScriptPubKey |> Option.defaultValue (state.Commitments.LocalParams.DefaultFinalScriptPubKey)
@@ -555,7 +555,7 @@ module Channel =
                     ScriptPubKey = localSPK
                 }
                 [ AcceptedOperationShutdown shutDown ]
-                |> CustomResult.Ok
+                |> Ok
         | ChannelState.Normal state, RemoteShutdown msg ->
             result {
                 let cm = state.Commitments
@@ -657,12 +657,12 @@ module Channel =
             match cm.RemoteNextCommitInfo with
             | _ when (not <| cm.LocalHasChanges()) ->
                 // nothing to sign
-                [] |> CustomResult.Ok
+                [] |> Ok
             | RemoteNextCommitInfo.Revoked _ ->
                 cm |> Commitments.sendCommit (cs.Secp256k1Context) (cs.KeysRepository) (cs.Network)
             | RemoteNextCommitInfo.Waiting _waitForRevocation ->
                 // Already in the process of signing.
-                [] |> CustomResult.Ok
+                [] |> Ok
         | Shutdown state, ApplyCommitmentSigned msg ->
             state.Commitments |> Commitments.receiveCommit (cs.Secp256k1Context) (cs.KeysRepository) msg cs.Network
         | Shutdown _state, ApplyRevokeAndACK _msg ->
@@ -692,7 +692,7 @@ module Channel =
                     let lastLocalClosingFee = state.ClosingTxProposed |> List.tryHead |> Option.bind (List.tryHead) |> Option.map (fun txp -> txp.LocalClosingSigned.FeeSatoshis)
                     let! localF = 
                         match lastLocalClosingFee with
-                        | Some v -> CustomResult.Ok v
+                        | Some v -> Ok v
                         | None ->
                             Closing.firstClosingFee (state.Commitments,
                                                       state.LocalShutdown.ScriptPubKey,

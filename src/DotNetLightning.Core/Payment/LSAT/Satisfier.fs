@@ -1,11 +1,12 @@
 namespace DotNetLightning.Payment.LSAT
 
-open ResultUtils
 open DotNetLightning.Utils
 open Macaroons
 open System.Collections.Generic
 open System.Runtime.CompilerServices
 open NBitcoin
+
+open ResultUtils
 
 /// When we verify a macaroon for its caveats, usually it check each caveats independently.
 /// In case of LSAT, this does not work since the validity of a caveat depends on a previous caveat
@@ -21,10 +22,10 @@ type ISatisfier =
     ///
     /// For example, we have a caveat that only allows us to use an LSAT for 7 more days. we can add another caveat
     /// that only allows for 3 more days of use and lend it to another party.
-    abstract SatisfyPrevious: Caveat * Caveat -> CustomResult.Result<unit, string>
+    abstract SatisfyPrevious: Caveat * Caveat -> Result<unit, string>
     /// Satisfies the final caveat of an LSAT. If multiple caveats with the same condition exist, this will only
     /// be executed once all previous caveats are also satisfied.
-    abstract SatisfyFinal: Caveat -> CustomResult.Result<unit, string>
+    abstract SatisfyFinal: Caveat -> Result<unit, string>
 
 type ServiceSatisfier(targetService: string) =
     do
@@ -42,7 +43,7 @@ type ServiceSatisfier(targetService: string) =
                 let! currentServices = Service.ParseMany(currentServiceValue.ToString())
                 for s in currentServices do
                     if not <| prevServices.Contains(s) then
-                        return! CustomResult.Error(sprintf "Service (%s) was not previously allowed!" s.Name)
+                        return! Error(sprintf "Service (%s) was not previously allowed!" s.Name)
                     else
                         ()
             }
@@ -53,7 +54,7 @@ type ServiceSatisfier(targetService: string) =
                 if services |> Seq.exists(fun s -> s.Name = targetService) then
                     return ()
                 else
-                    return! CustomResult.Error(sprintf "Target service %s not found" targetService)
+                    return! Error(sprintf "Target service %s not found" targetService)
             }
             
 type CapabilitiesSatisfier(service: string, targetCapability: string) =
@@ -72,7 +73,7 @@ type CapabilitiesSatisfier(service: string, targetCapability: string) =
                 let currentCapabilities = currentValue.Split ','
                 for c in currentCapabilities do
                     if (not <| prevCapabilities.Contains(c)) then
-                        return! CustomResult.Error(sprintf "Capability (%A) was not previously allowed!" c)
+                        return! Error(sprintf "Capability (%A) was not previously allowed!" c)
                     ()
             }
         member this.SatisfyFinal(finalCaveat) =
@@ -81,7 +82,7 @@ type CapabilitiesSatisfier(service: string, targetCapability: string) =
                 let caps = caps.Split ','
                 if (caps |> Seq.exists((=)targetCapability)) then
                     return ()
-                else return! CustomResult.Error(sprintf "target capability (%A) not found" targetCapability)
+                else return! Error(sprintf "target capability (%A) not found" targetCapability)
             }
             
 [<Extension;AbstractClass;Sealed>]
@@ -123,11 +124,11 @@ type MacaroonExtensions() =
         }
         |>
         function
-            | CustomResult.Ok _ ->
+            | Ok _ ->
                 // finally check each caveats independently
                 let v = Verifier()
                 for c in caveats do
                     v.SatisfyExact(c.CId)
                 macaroon.Verify(v, secret)
-            | CustomResult.Error e ->
+            | Error e ->
                 VerificationResult(e)

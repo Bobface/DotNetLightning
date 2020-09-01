@@ -5,7 +5,6 @@ namespace DotNetLightning.Serialize
 
 open DotNetLightning.Core.Utils.Extensions
 open DotNetLightning.Utils.Primitives
-open ResultUtils
 open System
 open System.IO
 open System.IO.Compression
@@ -14,23 +13,23 @@ open ResultUtils
 
 module Decoder =
     let private tryDecode (encodingType: EncodingType) (bytes : byte[]) =
-        if bytes.Length = 0 then bytes |> CustomResult.Ok else
+        if bytes.Length = 0 then bytes |> Ok else
         let data = bytes
         match encodingType with
         | EncodingType.SortedPlain ->
-            data |> CustomResult.Ok
+            data |> Ok
         | EncodingType.ZLib ->
             use ms = new MemoryStream(data)
             ms.Position <- 0L
             use ds = new DeflateStream(ms, CompressionMode.Decompress, true)
             use outputMs = new MemoryStream()
             ds.CopyTo(outputMs)
-            outputMs.ToArray() |> CustomResult.Ok
+            outputMs.ToArray() |> Ok
         | x ->
-            CustomResult.Error(sprintf "Unknown encoding type %A" x)
+            Error(sprintf "Unknown encoding type %A" x)
         
     let private unwrap b =
-        b |> function CustomResult.Ok x -> x | CustomResult.Error msg -> raise <| FormatException(msg)
+        b |> function Ok x -> x | Error msg -> raise <| FormatException(msg)
         
     let private bytesToShortIds (data: byte[]) =
         result {
@@ -39,7 +38,7 @@ module Decoder =
             if (remainder <> 0) then
                 return!
                     sprintf "Bogus encoded_ item! length of short_channel_ids must be multiple of 8. it was %d" data.Length
-                    |> CustomResult.Error
+                    |> Error
             else
                 return
                     data
@@ -67,7 +66,7 @@ module Decoder =
             |> Array.toList
             |> List.map (QueryFlags.TryCreate)
             |> List.sequenceResultM
-            |> Result.map List.toArray
+            |> ResultExtensions.map List.toArray
         flags
 
     let tryDecodeQueryFlags encodingType d =
@@ -87,7 +86,7 @@ module Decoder =
         result {
             if data.Length = 0 then return ([||]) else
             let div, rem = Math.DivRem(data.Length, 8)
-            if (rem <> 0) then return! CustomResult.Error(sprintf "bogus timestamps! %A" data) else
+            if (rem <> 0) then return! Error(sprintf "bogus timestamps! %A" data) else
             use ms = new MemoryStream(data)
             use ls = new LightningReaderStream(ms)
             let res = Array.zeroCreate div
@@ -100,11 +99,11 @@ module Decoder =
         
     let private bytesToTimestampPair x =
         bytesToUint32Pair x
-        |> Result.map(Array.map(fun (a, b) -> { TwoTimestamps.NodeId1 = a; NodeId2 = b }))
+        |> ResultExtensions.map(Array.map(fun (a, b) -> { TwoTimestamps.NodeId1 = a; NodeId2 = b }))
         
     let tryBytesToChecksumPair x =
         bytesToUint32Pair x
-        |> Result.map(Array.map(fun (a, b) -> { TwoChecksums.NodeId1 = a; NodeId2 = b }))
+        |> ResultExtensions.map(Array.map(fun (a, b) -> { TwoChecksums.NodeId1 = a; NodeId2 = b }))
        
     let bytesToChecksumPair =
         tryBytesToChecksumPair >> unwrap

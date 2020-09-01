@@ -8,8 +8,8 @@ open System.Collections.Generic
 open DotNetLightning.Utils
 open DotNetLightning.Serialize.Msgs
 open NBitcoin
-open ResultUtils
 
+open ResultUtils
 
 type NetworkEvent =
     | NodeDiscovered of msg: NodeAnnouncementMsg
@@ -31,7 +31,7 @@ type RouterError =
     | RouteFindingError of string
 [<AutoOpen>]
 module internal RouterError =
-    let routeFindingError msg = RouteFindingError msg |> CustomResult.Error
+    let routeFindingError msg = RouteFindingError msg |> Error
 type RouterCommand =
     | ChannelEvent of ChannelEvent
     | NetworkEvent of NetworkEvent

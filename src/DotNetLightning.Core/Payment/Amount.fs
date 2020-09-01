@@ -14,18 +14,18 @@ module Amount =
         | micro when micro % 1000000000L > 0L -> 'u'
         | _ -> 'm'
         
-    let decode (input: string): CustomResult.Result<LNMoney, string> =
+    let decode (input: string): Result<LNMoney, string> =
         let parseCore (a: string) multi =
             match a |> Int64.TryParse with
             | true, aValue ->
-                LNMoney.MilliSatoshis(aValue * multi) |> CustomResult.Ok
-            | false, _ -> sprintf "Could not parse %s into Int64" a |> CustomResult.Error
+                LNMoney.MilliSatoshis(aValue * multi) |> Ok
+            | false, _ -> sprintf "Could not parse %s into Int64" a |> Error
         match input with
-        | "" -> CustomResult.Error "Empty input"
+        | "" -> Error "Empty input"
         | a when a.[a.Length - 1] = 'p' ->
             (parseCore (a.Substring(0, a.Length - 1)) 1L)
             // 1 milli-satoshis == 10 pico-bitcoin, so we must divide it here.
-            |> Result.map(fun lnMoney -> (lnMoney.MilliSatoshi / 10L) |> LNMoney.MilliSatoshis)
+            |> ResultExtensions.map(fun lnMoney -> (lnMoney.MilliSatoshi / 10L) |> LNMoney.MilliSatoshis)
         | a when a.[a.Length - 1] = 'n' ->
             parseCore (a.Substring(0, a.Length - 1)) 100L
         | a when a.[a.Length - 1] = 'u' ->

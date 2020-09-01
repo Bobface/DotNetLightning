@@ -61,27 +61,27 @@ type RevocationSet private (keys: list<CommitmentNumber * RevocationKey>) =
 
     member this.InsertRevocationKey (commitmentNumber: CommitmentNumber)
                                     (revocationKey: RevocationKey)
-                                        : CustomResult.Result<RevocationSet, InsertRevocationKeyError> =
+                                        : Result<RevocationSet, InsertRevocationKeyError> =
         let nextCommitmentNumber = this.NextCommitmentNumber
         if commitmentNumber <> nextCommitmentNumber then
-            CustomResult.Error <| UnexpectedCommitmentNumber (commitmentNumber, nextCommitmentNumber)
+            Error <| UnexpectedCommitmentNumber (commitmentNumber, nextCommitmentNumber)
         else
             let rec fold (keys: list<CommitmentNumber * RevocationKey>)
-                             : CustomResult.Result<RevocationSet, InsertRevocationKeyError> =
+                             : Result<RevocationSet, InsertRevocationKeyError> =
                 if keys.IsEmpty then
                     let res = [commitmentNumber, revocationKey]
-                    CustomResult.Ok <| RevocationSet res
+                    Ok <| RevocationSet res
                 else
                     let storedCommitmentNumber, storedRevocationKey = keys.Head
                     match revocationKey.DeriveChild commitmentNumber storedCommitmentNumber with
                     | Some derivedRevocationKey ->
                         if derivedRevocationKey <> storedRevocationKey then
-                            CustomResult.Error <| KeyMismatch (storedCommitmentNumber, commitmentNumber)
+                            Error <| KeyMismatch (storedCommitmentNumber, commitmentNumber)
                         else
                             fold keys.Tail
                     | None ->
                         let res = (commitmentNumber, revocationKey) :: keys
-                        CustomResult.Ok <| RevocationSet res
+                        Ok <| RevocationSet res
             fold this.Keys
 
     member this.GetRevocationKey (commitmentNumber: CommitmentNumber)

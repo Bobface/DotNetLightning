@@ -2,13 +2,13 @@ namespace DotNetLightning.Channel
 
 open NBitcoin
 
-open ResultUtils
-
 open DotNetLightning.Utils
 open DotNetLightning.Transactions
 open DotNetLightning.Crypto
 open DotNetLightning.Chain
 open DotNetLightning.Serialize.Msgs
+
+open ResultUtils
 
 [<RequireQualifiedAccess; CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal Commitments =
@@ -74,7 +74,7 @@ module internal Commitments =
             (commitmentInput: ScriptCoin)
             (localPerCommitmentPoint: CommitmentPubKey)
             (spec: CommitmentSpec)
-            n: CustomResult.Result<(CommitTx * HTLCTimeoutTx list * HTLCSuccessTx list), _> =
+            n: Result<(CommitTx * HTLCTimeoutTx list * HTLCSuccessTx list), _> =
             let channelKeys = localParams.ChannelPubKeys
             let pkGen = Generators.derivePubKey ctx localPerCommitmentPoint.PubKey
             let localPaymentPK = pkGen channelKeys.PaymentBasePubKey
@@ -131,7 +131,7 @@ module internal Commitments =
             let msgToSend: UpdateFulfillHTLCMsg =
                 { ChannelId = cm.ChannelId; HTLCId = op.Id; PaymentPreimage = op.PaymentPreimage }
             let newCommitments = cm.AddLocalProposal(msgToSend)
-            (msgToSend, newCommitments) |> CustomResult.Ok
+            (msgToSend, newCommitments) |> Ok
         | Some htlc ->
             (htlc.PaymentHash, op.PaymentPreimage)
             |> invalidPaymentPreimage
@@ -144,7 +144,7 @@ module internal Commitments =
         | Some htlc when htlc.PaymentHash = msg.PaymentPreimage.Hash ->
             let commitments = cm.AddRemoteProposal(msg)
             let origin = cm.OriginChannels |> Map.find(msg.HTLCId)
-            [WeAcceptedFulfillHTLC(msg, origin, htlc, commitments)] |> CustomResult.Ok
+            [WeAcceptedFulfillHTLC(msg, origin, htlc, commitments)] |> Ok
         | Some htlc ->
             (htlc.PaymentHash, msg.PaymentPreimage)
             |> invalidPaymentPreimage
@@ -159,7 +159,7 @@ module internal Commitments =
         | Some htlc ->
             let ad = htlc.PaymentHash.ToBytes()
             let rawPacket = htlc.OnionRoutingPacket.ToBytes()
-            Sphinx.parsePacket localKey ad rawPacket |> Result.mapError(ChannelError.CryptoError)
+            Sphinx.parsePacket localKey ad rawPacket |> ResultExtensions.mapError(ChannelError.CryptoError)
             >>= fun ({ SharedSecret = ss}) ->
                 let reason =
                     op.Reason
@@ -169,7 +169,7 @@ module internal Commitments =
                           Reason = { Data = reason } }
                 let nextComitments = cm.AddLocalProposal(f)
                 [ WeAcceptedOperationFailHTLC(f, nextComitments) ]
-                |> CustomResult.Ok
+                |> Ok
         | None ->
             op.Id |> unknownHTLCId
 
@@ -179,7 +179,7 @@ module internal Commitments =
             result {
                 let! o =
                     match cm.OriginChannels.TryGetValue(msg.HTLCId) with
-                    | true, origin -> CustomResult.Ok origin
+                    | true, origin -> Ok origin
                     | false, _ ->
                         msg.HTLCId |> htlcOriginNowKnown
                 let nextC = cm.AddRemoteProposal(msg)
@@ -204,7 +204,7 @@ module internal Commitments =
                             FailureCode = op.FailureCode }
                 let nextCommitments = cm.AddLocalProposal(msg)
                 [ WeAcceptedOperationFailMalformedHTLC(msg, nextCommitments) ]
-                |> CustomResult.Ok
+                |> Ok
             | None ->
                 op.Id |> unknownHTLCId
 
@@ -217,7 +217,7 @@ module internal Commitments =
                 result {
                     let! o =
                         match cm.OriginChannels.TryGetValue(msg.HTLCId) with
-                        | true, o -> CustomResult.Ok o
+                        | true, o -> Ok o
                         | false, _ ->
                             msg.HTLCId |> htlcOriginNowKnown
                     let nextC = cm.AddRemoteProposal(msg)
@@ -317,16 +317,16 @@ module internal Commitments =
                 return [ WeAcceptedOperationSign (msg, nextCommitments) ]
             }
         | RemoteNextCommitInfo.Waiting _ ->
-            CanNotSignBeforeRevocation |> CustomResult.Error
+            CanNotSignBeforeRevocation |> Error
 
     let private checkSignatureCountMismatch(sortedHTLCTXs: IHTLCTx list) (msg) =
         if (sortedHTLCTXs.Length <> msg.HTLCSignatures.Length) then
             signatureCountMismatch (sortedHTLCTXs.Length, msg.HTLCSignatures.Length)
         else
-            CustomResult.Ok()
-    let receiveCommit (ctx) (keyRepo: IKeysRepository) (msg: CommitmentSignedMsg) (n: Network) (cm: Commitments): CustomResult.Result<ChannelEvent list, ChannelError> =
+            Ok()
+    let receiveCommit (ctx) (keyRepo: IKeysRepository) (msg: CommitmentSignedMsg) (n: Network) (cm: Commitments): Result<ChannelEvent list, ChannelError> =
         if cm.RemoteHasChanges() |> not then
-            ReceivedCommitmentSignedWhenWeHaveNoPendingChanges |> CustomResult.Error
+            ReceivedCommitmentSignedWhenWeHaveNoPendingChanges |> Error
         else
             let chanPrivateKeys = keyRepo.GetChannelKeys cm.LocalParams.IsFunder
             let commitmentSeed = chanPrivateKeys.CommitmentSeed
@@ -360,16 +360,16 @@ module internal Commitments =
 
                 let remoteHTLCPubKey = Generators.derivePubKey ctx (cm.RemoteParams.HTLCBasePoint) localPerCommitmentPoint.PubKey
 
-                let checkHTLCSig (htlc: IHTLCTx, remoteECDSASig: LNECDSASignature): CustomResult.Result<_, _> =
+                let checkHTLCSig (htlc: IHTLCTx, remoteECDSASig: LNECDSASignature): Result<_, _> =
                     let remoteS = TransactionSignature(remoteECDSASig.Value, SigHash.All)
                     match htlc with
                     | :? HTLCTimeoutTx ->
                         (Transactions.checkTxFinalized (htlc.Value) (0) (seq [(remoteHTLCPubKey, remoteS)]))
-                        |> Result.map(box)
+                        |> ResultExtensions.map(box)
                     // we cannot check that htlc-success tx are spendable because we need the payment preimage; thus we only check the remote sig
                     | :? HTLCSuccessTx ->
                         (Transactions.checkSigAndAdd (htlc) (remoteS) (remoteHTLCPubKey))
-                        |> Result.map(box)
+                        |> ResultExtensions.map(box)
                     | _ -> failwith "Unreachable!"
 
                 let! txList =

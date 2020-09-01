@@ -57,7 +57,7 @@ type ISecp256k1 =
     abstract member PublicKeyTweakMultiply: tweak: ReadOnlySpan<byte> * pubKeyToMutate: Span<byte> -> bool
 
 type ICryptoImpl =
-    abstract member decryptWithAD: nonce: uint64 * key: uint256 * ad: byte[] * cipherText: ReadOnlySpan<byte> -> CustomResult.Result<byte[], CryptoError>
+    abstract member decryptWithAD: nonce: uint64 * key: uint256 * ad: byte[] * cipherText: ReadOnlySpan<byte> -> Result<byte[], CryptoError>
     abstract member encryptWithAD: nonce: uint64 * key: uint256 * ad: ReadOnlySpan<byte> * plainText: ReadOnlySpan<byte> -> byte[]
     /// This is used for filler generation in onion routing (BOLT 4)
     abstract member encryptWithoutAD: nonce: uint64 * key: byte[] * plainText: ReadOnlySpan<byte> -> byte[]
@@ -172,15 +172,15 @@ module Sodium =
         interface ICryptoImpl with
             member this.newSecp256k1() =
                 new NBitcoinSecp256k1() :> ISecp256k1
-            member this.decryptWithAD(n: uint64, key: uint256, ad: byte[], cipherText: ReadOnlySpan<byte>): CustomResult.Result<byte[], CryptoError> =
+            member this.decryptWithAD(n: uint64, key: uint256, ad: byte[], cipherText: ReadOnlySpan<byte>): Result<byte[], CryptoError> =
                 let nonce = getNonce n
                 let keySpan = ReadOnlySpan (key.ToBytes())
                 let adSpan = ReadOnlySpan ad
                 let blobF = NSec.Cryptography.KeyBlobFormat.RawSymmetricKey
                 let chachaKey = NSec.Cryptography.Key.Import(chacha20AD, keySpan, blobF)
                 match chacha20AD.Decrypt(chachaKey, &nonce, adSpan, cipherText) with
-                | true, plainText -> CustomResult.Ok plainText
-                | false, _ -> CustomResult.Error(BadMac)
+                | true, plainText -> Ok plainText
+                | false, _ -> Error(BadMac)
 
             member this.encryptWithoutAD(n: uint64, key: byte[], plainText: ReadOnlySpan<byte>) =
                 let nonce = getNonce n
@@ -298,7 +298,7 @@ module BouncyCastle =
 
             member this.decryptWithAD(n: uint64, key: uint256, ad: byte[], ciphertext: ReadOnlySpan<byte>) =
                 if ciphertext.Length < 16 then
-                    CryptoError.InvalidMessageLength ciphertext.Length |> CustomResult.Error
+                    CryptoError.InvalidMessageLength ciphertext.Length |> Error
                 else
                     let key = key.ToBytes()
                     let nonce = Array.concat[| Array.zeroCreate 4; BitConverter.GetBytes n |]
@@ -306,10 +306,10 @@ module BouncyCastle =
                     let macToValidate = ciphertext.Slice(ciphertext.Length - 16).ToArray()
                     let correctMac = calcMac key nonce ciphertextWithoutMac (ReadOnlySpan ad)
                     if correctMac <> macToValidate then
-                        CustomResult.Error(BadMac)
+                        Error(BadMac)
                     else
                         let plaintext = encryptOrDecrypt Decrypt ciphertextWithoutMac key nonce true
-                        CustomResult.Ok plaintext
+                        Ok plaintext
 
             member this.encryptWithoutAD(n: uint64, key: byte[], plainText: ReadOnlySpan<byte>) =
                 let nonce = Array.concat [| Array.zeroCreate 4; BitConverter.GetBytes n |]

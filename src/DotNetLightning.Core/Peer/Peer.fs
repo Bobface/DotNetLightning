@@ -2,13 +2,13 @@ namespace DotNetLightning.Peer
 
 open NBitcoin
 
-open ResultUtils
-
 open DotNetLightning.Serialize
 open System.Collections
 open DotNetLightning.Utils
 open DotNetLightning.Serialize.Msgs
 open DotNetLightning.Utils.Aether
+
+open ResultUtils
 
 type PeerHandleError = {
     /// Used to indicate that we probably can't make any future connections to this peer, implying
@@ -94,7 +94,7 @@ module Peer =
                     
                 let packet = reader (int len + 16)
                 let! (b, newPCE) = pce |> PeerChannelEncryptor.decryptMessage packet
-                let! msg = LightningMsg.fromBytes b |> Result.mapError(PeerError.P2PMessageDecodeError)
+                let! msg = LightningMsg.fromBytes b |> ResultExtensions.mapError(PeerError.P2PMessageDecodeError)
                 return
                     match msg with
                     | :? ErrorMsg as msg ->
@@ -114,7 +114,7 @@ module Peer =
             }
         | NoiseComplete, EncodeMsg (msg) ->
             state.ChannelEncryptor |> PeerChannelEncryptor.encryptMessage (msg.ToBytes())
-            |> (MsgEncoded >> List.singleton >> CustomResult.Ok)
+            |> (MsgEncoded >> List.singleton >> Ok)
         | s, cmd ->
             failwithf "Peer does not know how to handle %A while in noise step %A" cmd noiseStep
         

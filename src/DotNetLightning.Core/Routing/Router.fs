@@ -1,6 +1,5 @@
 namespace DotNetLightning.Routing
 
-open ResultUtils
 open DotNetLightning.Utils.Primitives
 open DotNetLightning.Utils
 
@@ -10,6 +9,8 @@ open System
 open DotNetLightning.Payment
 open DotNetLightning.Routing.Graph
 open NBitcoin
+
+open ResultUtils
 
 module Routing =
     
@@ -73,7 +74,7 @@ module Routing =
         (ignoredE: Set<ChannelDesc>)
         (ignoredV: Set<NodeId>)
         (routeParams: RouteParams)
-        (currentBlockHeight: BlockHeight): CustomResult.Result<seq<ChannelHop>, RouterError> =
+        (currentBlockHeight: BlockHeight): Result<seq<ChannelHop>, RouterError> =
         
         if (local = target) then routeFindingError("Cannot route to yourself") else
         let feeBaseOk(fee: LNMoney) =
@@ -116,7 +117,7 @@ module Routing =
                 routes
                 |> if (routeParams.Randomize) then (List.sortBy(fun _ -> Guid.NewGuid())) else id
                 |> List.head
-                |> fun x -> (x.Path |> Seq.map ChannelHop.FromGraphEdge) |> CustomResult.Ok
+                |> fun x -> (x.Path |> Seq.map ChannelHop.FromGraphEdge) |> Ok
     
     let private toFakeUpdate(extraHop: ExtraHop) (htlcMaximum: LNMoney): UnsignedChannelUpdateMsg =
         // the `direction` bit in flags will not be accurate but it doesn't matter because it is not used

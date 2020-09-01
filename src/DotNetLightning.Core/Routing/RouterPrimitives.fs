@@ -3,17 +3,18 @@ namespace DotNetLightning.Routing
 open DotNetLightning.Payment
 open System
 open NBitcoin
-open ResultUtils
 open DotNetLightning.Utils
 open DotNetLightning.Serialize.Msgs
 open Graph
+
+open ResultUtils
 
 [<AutoOpen>]
 module RouterPrimitives =
     let checkUpdate(x: ChannelUpdateMsg option, msg ) =
         match x with
-        | Some x -> Result.requireTrue msg (x.IsNode1)
-        | None -> CustomResult.Ok()
+        | Some x -> ResultExtensions.requireTrue msg (x.IsNode1)
+        | None -> Ok()
         
     let isNode1(localNodeId: NodeId, remoteNodeId: NodeId) =
         localNodeId > remoteNodeId

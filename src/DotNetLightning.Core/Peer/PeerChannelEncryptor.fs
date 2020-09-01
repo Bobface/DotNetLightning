@@ -5,13 +5,12 @@ open System
 open NBitcoin
 open NBitcoin.Crypto
 
-open ResultUtils
-
 open DotNetLightning.Utils
 open DotNetLightning.Utils.Aether
 open DotNetLightning.Utils.Aether.Operators
 open DotNetLightning.Crypto
 
+open ResultUtils
 
 [<AutoOpen>]
 module PeerChannelEncryptor =
@@ -303,9 +302,9 @@ module PeerChannelEncryptor =
                         BidirectionalState = {H = h; CK = uint256(NOISE_CK)}
                     }
             }
-        let internal decryptWithAD(n: uint64, key: uint256, ad: byte[], cipherText: ReadOnlySpan<byte>): CustomResult.Result<byte[], _> =
+        let internal decryptWithAD(n: uint64, key: uint256, ad: byte[], cipherText: ReadOnlySpan<byte>): Result<byte[], _> =
             crypto.decryptWithAD(n, key, ad, cipherText)
-            |> Result.mapError(PeerError.CryptoError)
+            |> ResultExtensions.mapError(PeerError.CryptoError)
 
         let internal hkdfExtractExpand(salt: byte[], ikm: byte[]) =
             let prk = Hashes.HMACSHA256(salt, ikm)
@@ -336,12 +335,12 @@ module PeerChannelEncryptor =
             let newState = updateHWith s3 c
             (resultToSend, tempK), newState
 
-        let private inBoundNoiseAct (state: PeerChannelEncryptor, act: byte[], ourKey: Key): CustomResult.Result<(PubKey * uint256) * PeerChannelEncryptor, PeerError> =
+        let private inBoundNoiseAct (state: PeerChannelEncryptor, act: byte[], ourKey: Key): Result<(PubKey * uint256) * PeerChannelEncryptor, PeerError> =
             if (act.Length <> 50) then raise <| ArgumentException(sprintf "Invalid act length: %d" (act.Length))
             if (act.[0] <> 0uy) then
-                CustomResult.Error(UnknownHandshakeVersionNumber (act.[0]))
+                Error(UnknownHandshakeVersionNumber (act.[0]))
             else if not (PubKey.Check(act.[1..33], true)) then
-                CustomResult.Error(PeerError.CryptoError(InvalidPublicKey(act.[1..33])))
+                Error(PeerError.CryptoError(InvalidPublicKey(act.[1..33])))
             else
                 let theirPub = PubKey(act.[1..33])
                 let tempK, s3 =
@@ -369,7 +368,7 @@ module PeerChannelEncryptor =
                 | _ -> failwith "Wrong Direction for Act"
             | _ -> failwith "Cannot get act one after noise  handshake completes"
 
-        let processActOneWithEphemeralKey (actOne: byte[]) (ourNodeSecret: Key) (ourEphemeral: Key) (pce: PeerChannelEncryptor): CustomResult.Result<byte[] * _, PeerError> =
+        let processActOneWithEphemeralKey (actOne: byte[]) (ourNodeSecret: Key) (ourEphemeral: Key) (pce: PeerChannelEncryptor): Result<byte[] * _, PeerError> =
             match pce.NoiseState with
             | InProgress { State = state; DirectionalState = dState; } ->
                 match dState with
@@ -390,18 +389,18 @@ module PeerChannelEncryptor =
                             |> Optic.set PeerChannelEncryptor.State_ NoiseStep.PostActTwo
                             |> Optic.set PeerChannelEncryptor.TempK2_ tempK
 
-                        CustomResult.Ok (res, pce5)
+                        Ok (res, pce5)
                 | _ -> failwith "Requested act at wrong step"
             | _ ->
                 failwith "Cannot get acg one after noise handshake completes"
 
-        let processActOneWithKey (actOne: byte[]) (ourNodeSecret: Key) (pce: PeerChannelEncryptor): CustomResult.Result<byte[] * _, PeerError> =
+        let processActOneWithKey (actOne: byte[]) (ourNodeSecret: Key) (pce: PeerChannelEncryptor): Result<byte[] * _, PeerError> =
             if (actOne.Length <> 50) then raise <| ArgumentException(sprintf "invalid actOne length: %d" (actOne.Length))
 
             let ephemeralKey = new Key()
             processActOneWithEphemeralKey actOne ourNodeSecret ephemeralKey pce
 
-        let processActTwo (actTwo: byte[]) (ourNodeSecret: Key) (pce: PeerChannelEncryptor): CustomResult.Result<(byte[] * NodeId) * PeerChannelEncryptor, PeerError> = 
+        let processActTwo (actTwo: byte[]) (ourNodeSecret: Key) (pce: PeerChannelEncryptor): Result<(byte[] * NodeId) * PeerChannelEncryptor, PeerError> = 
             match pce.NoiseState with
             | InProgress {State = state; DirectionalState = dState } -> 
                 match dState with
@@ -440,11 +439,11 @@ module PeerChannelEncryptor =
                                              RCK = ck.Value
                                          })
                         let resultToSend = Array.concat (seq [ [|0uy|]; encryptedRes1; encryptedRes2 ])
-                        CustomResult.Ok ((resultToSend, newPce.TheirNodeId.Value), newPce)
+                        Ok ((resultToSend, newPce.TheirNodeId.Value), newPce)
                 | _ -> failwith "Wrong direction with act"
             | _ -> failwith "Cannot get act one after noise handshake completes"
 
-        let processActThree (actThree: byte[]) (pce: PeerChannelEncryptor): CustomResult.Result<NodeId * PeerChannelEncryptor, PeerError> =
+        let processActThree (actThree: byte[]) (pce: PeerChannelEncryptor): Result<NodeId * PeerChannelEncryptor, PeerError> =
             if (actThree.Length <> 66) then raise <| ArgumentException (sprintf "actThree must be 66 bytes, but it was %d" (actThree.Length))
             match pce.NoiseState with
             | InProgress { State = state; DirectionalState = dState;} ->
@@ -453,13 +452,13 @@ module PeerChannelEncryptor =
                     if (state <> PostActTwo) then
                         failwith "Requested act at wrong step"
                     else if (actThree.[0] <> 0uy) then
-                        CustomResult.Error(UnknownHandshakeVersionNumber(actThree.[0]))
+                        Error(UnknownHandshakeVersionNumber(actThree.[0]))
                     else
                         let h = Optic.get (PeerChannelEncryptor.H_) pce
                         decryptWithAD (1UL, tempk2.Value, h.Value.ToBytes(), ReadOnlySpan(actThree.[1..49]))
                         >>= fun theirNodeId ->
                             if not (PubKey.Check (theirNodeId, true)) then
-                                CustomResult.Error(PeerError.CryptoError(CryptoError.InvalidPublicKey(theirNodeId)))
+                                Error(PeerError.CryptoError(CryptoError.InvalidPublicKey(theirNodeId)))
                             else
                                 let tempK, pce3 =
                                     let pce2 =
@@ -484,7 +483,7 @@ module PeerChannelEncryptor =
                                                             RCK = ck
                                                          }))
                                                          pce3
-                                    CustomResult.Ok(newPce.TheirNodeId.Value, newPce)
+                                    Ok(newPce.TheirNodeId.Value, newPce)
                 | _ -> failwith "wrong direction for act"
             | _ -> failwith "Cannot get act one after noise handshake completes"
 
@@ -529,8 +528,8 @@ module PeerChannelEncryptor =
                 let newPCE =
                     localPce
                     |> Optic.set (PeerChannelEncryptor.RN_) (newRN + 1UL)
-                (BitConverter.ToUint16BE(plainText), newPCE) |> CustomResult.Ok
-        let decryptLengthHeader (msg: byte[]) (pce): CustomResult.Result<uint16 * PeerChannelEncryptor, PeerError> =
+                (BitConverter.ToUint16BE(plainText), newPCE) |> Ok
+        let decryptLengthHeader (msg: byte[]) (pce): Result<uint16 * PeerChannelEncryptor, PeerError> =
             if (msg.Length <> 16 + 2) then raise <| ArgumentException(sprintf "Invalid length of message %d" msg.Length)
             match pce.NoiseState with
             | Finished { RK = rk; RN = rn; RCK = rck } ->
@@ -560,7 +559,7 @@ module PeerChannelEncryptor =
                 >>= fun plainText ->
                     let newState =
                         pce |> Optic.set (PeerChannelEncryptor.RN_) (rn + 1UL)
-                    CustomResult.Ok(plainText, newState)
+                    Ok(plainText, newState)
             | _ -> failwith "Tried to encyrpt a message prior to noise handshake completion"
 
 
@@ -568,7 +567,7 @@ module PeerChannelEncryptor =
 [<AutoOpen>]
 module PeerChannelEncryptorMonad =
     type PeerChannelEncryptorComputation<'a> =
-        PeerChannelEncryptorComputation of (PeerChannelEncryptor -> CustomResult.Result<'a * PeerChannelEncryptor, PeerError>)
+        PeerChannelEncryptorComputation of (PeerChannelEncryptor -> Result<'a * PeerChannelEncryptor, PeerError>)
 
     let runP pcec initialState =
         let (PeerChannelEncryptorComputation innerFn)= pcec
@@ -576,7 +575,7 @@ module PeerChannelEncryptorMonad =
 
     let returnP x =
         let innerFn state = 
-            CustomResult.Ok(x, state)
+            Ok(x, state)
         PeerChannelEncryptorComputation innerFn
 
     let bindP (f: 'a -> PeerChannelEncryptorComputation<'b>) (xT: PeerChannelEncryptorComputation<'a>): PeerChannelEncryptorComputation<'b> =
@@ -594,7 +593,7 @@ module PeerChannelEncryptorMonad =
     let fromPlainFunction (f: PeerChannelEncryptor -> 'a * PeerChannelEncryptor) =
         let innerFn state =
             let (result, newState) = f state
-            CustomResult.Ok(result, newState)
+            Ok(result, newState)
         PeerChannelEncryptorComputation innerFn
 
     /// Lift non-failable reader function to monadic world
@@ -610,14 +609,14 @@ module PeerChannelEncryptorMonad =
             (), f state
         fromPlainFunction f2
 
-    let fromFailableFunction (f: PeerChannelEncryptor -> CustomResult.Result<'a * PeerChannelEncryptor, _>) =
+    let fromFailableFunction (f: PeerChannelEncryptor -> Result<'a * PeerChannelEncryptor, _>) =
         PeerChannelEncryptorComputation f
 
-    let fromFailableReaderFunction (f: PeerChannelEncryptor -> CustomResult.Result<'a, _>) =
+    let fromFailableReaderFunction (f: PeerChannelEncryptor -> Result<'a, _>) =
         let innerFn state =
             f state
             >>= fun result ->
-                CustomResult.Ok (result, state)
+                Ok (result, state)
         PeerChannelEncryptorComputation innerFn
 
 

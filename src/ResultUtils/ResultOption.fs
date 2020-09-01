@@ -3,13 +3,13 @@ namespace ResultUtils
 [<RequireQualifiedAccess>]
 module ResultOption =
   let map f ro =
-    Result.map(Option.map f) ro
+    ResultExtensions.map(Option.map f) ro
 
   let bind f ro =
-    Result.bind (function | Some x -> f x | None -> CustomResult.Ok None) ro
+    ResultExtensions.bind (function | Some x -> f x | None -> Ok None) ro
 
   let retn x =
-    CustomResult.Ok (Some x)
+    Ok (Some x)
 
   let apply f x =
     bind (fun f' ->

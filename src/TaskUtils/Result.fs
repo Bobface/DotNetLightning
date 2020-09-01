@@ -18,24 +18,24 @@ module Result =
 
 [<RequireQualifiedAccess>]
 module List =
-  let private traverseTaskResultM' (f: 'c -> Task<CustomResult.Result<'a, 'b>>) (xs: 'c list) =
-    let mutable state = CustomResult.Ok []
+  let private traverseTaskResultM' (f: 'c -> Task<Result<'a, 'b>>) (xs: 'c list) =
+    let mutable state = Ok []
     let mutable index = 0
     let xs = xs |> List.toArray
     task {
-        while state |> Result.isOk && index < xs.Length do
+        while state |> ResultExtensions.isOk && index < xs.Length do
             let! r = xs |> Array.item index |> f
             index <- index + 1 
             match (r, state) with
-            | CustomResult.Ok y, CustomResult.Ok ys ->
-                state <- CustomResult.Ok (y :: ys)
-            | CustomResult.Error e, _ ->
-                state <- CustomResult.Error e
+            | Ok y, Ok ys ->
+                state <- Ok (y :: ys)
+            | Error e, _ ->
+                state <- Error e
             | _, _ ->
                 ()
         return 
             state
-            |> Result.map List.rev
+            |> ResultExtensions.map List.rev
     }
   let traverseTaskResultM f xs =
     traverseTaskResultM' f xs
@@ -43,24 +43,24 @@ module List =
   let sequenceTaskResultM xs =
     traverseTaskResultM id xs
 
-  let private traverseTaskResultA' (f : 'c -> Task<CustomResult.Result<'a,'b>>) (xs : 'c list) =
-    let mutable state = CustomResult.Ok []
+  let private traverseTaskResultA' (f : 'c -> Task<Result<'a,'b>>) (xs : 'c list) =
+    let mutable state = Ok []
     
     task {
         for x in xs do
             let! r = f x 
             match (r, state) with
-            | CustomResult.Ok y, CustomResult.Ok ys ->
-                state <- CustomResult.Ok (y :: ys)
-            | CustomResult.Error e, CustomResult.Error errs ->
-                state <- CustomResult.Error (e :: errs)
-            | CustomResult.Ok _, CustomResult.Error e ->
-                state <- CustomResult.Error e
-            | CustomResult.Error e , CustomResult.Ok _  -> 
-                state <- CustomResult.Error [e]
+            | Ok y, Ok ys ->
+                state <- Ok (y :: ys)
+            | Error e, Error errs ->
+                state <- Error (e :: errs)
+            | Ok _, Error e ->
+                state <- Error e
+            | Error e , Ok _  -> 
+                state <- Error [e]
         return
             state
-            |> Result.eitherMap List.rev List.rev
+            |> ResultExtensions.eitherMap List.rev List.rev
     }
 
   let traverseTaskResultA f xs =

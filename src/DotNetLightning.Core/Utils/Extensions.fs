@@ -7,6 +7,7 @@ open System.Collections
 open System.Collections.Generic
 open System.Runtime.CompilerServices
 open System.Text
+
 open ResultUtils
 
 module Dict =
@@ -97,25 +98,25 @@ type BitArrayExtensions() =
         
     [<Extension>]
     static member TryPopVarInt(this: byte array) =
-        let e b = sprintf "Decoded VarInt is not canonical %A" b |> CustomResult.Error
+        let e b = sprintf "Decoded VarInt is not canonical %A" b |> Error
         let x = this.[0]
         if x < 0xfduy then
-            ((uint64 x), this.[1..]) |> CustomResult.Ok
+            ((uint64 x), this.[1..]) |> Ok
         else if x = 0xfduy then
             if (this.Length < 2) then e this else
             let v = this.[1..2] |> UInt16.FromBytesBigEndian |> uint64
             if (v < 0xfdUL || 0x10000UL <= v) then e this else
-            (v, this.[3..]) |> CustomResult.Ok
+            (v, this.[3..]) |> Ok
         else if x = 0xfeuy then
             if (this.Length < 4) then e this else
             let v = this.[1..4] |> fun x -> NBitcoin.Utils.ToUInt32(x, false) |> uint64
             if (v < 0x10000UL || 0x100000000UL <= v) then e this else
-            (v, this.[5..]) |> CustomResult.Ok
+            (v, this.[5..]) |> Ok
         else
             if (this.Length < 8) then e this else
             let v = this.[1..8] |> fun x -> NBitcoin.Utils.ToUInt64(x, false)
             if (v < 0x100000000UL) then e this else
-            (v, this.[9..]) |> CustomResult.Ok
+            (v, this.[9..]) |> Ok
         
 type System.Collections.BitArray with
     member this.ToByteArray() =
@@ -197,9 +198,9 @@ type System.Collections.BitArray with
             hasFunnyChar <- i
         if hasFunnyChar <> -1 then
             sprintf "Failed to parse BitArray! it must have only '0' or '1' but we found %A" str.[hasFunnyChar]
-            |> CustomResult.Error
+            |> Error
         else
-            BitArray(array) |> CustomResult.Ok
+            BitArray(array) |> Ok
         
     /// This flips bits for each byte before passing to the BitArray constructor.
     /// This is necessary for representing bolt 9 feature bits as BitArray

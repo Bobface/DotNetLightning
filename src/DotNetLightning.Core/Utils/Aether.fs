@@ -187,25 +187,25 @@ module Aether =
 
         [<RequireQualifiedAccess>]
         module Result =
-            let ok_: Prism<CustomResult.Result<_, _>, _> =
+            let ok_: Prism<Result<_, _>, _> =
                 (fun x ->
                     match x with
-                    | CustomResult.Ok v -> Some v
+                    | Ok v -> Some v
                     | _ -> None),
                 (fun v x ->
                     match x with
-                    | CustomResult.Ok _ -> CustomResult.Ok v
+                    | Ok _ -> Ok v
                     | _ -> x)
 
                     /// Prism to Error.
-            let error_: Prism<CustomResult.Result<_, _>, _> =
+            let error_: Prism<Result<_, _>, _> =
                 (fun x ->
                     match x with
-                    | CustomResult.Error v -> Some v
+                    | Error v -> Some v
                     | _ -> None),
                 (fun v x ->
                     match x with
-                    | CustomResult.Error _ -> CustomResult.Error v
+                    | Error _ -> Error v
                     | _ -> x)
 
 

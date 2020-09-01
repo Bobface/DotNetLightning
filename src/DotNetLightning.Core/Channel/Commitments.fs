@@ -198,12 +198,12 @@ type Commitments = {
                 )
             let reduced =
                 match reducedRes with
-                | CustomResult.Error err ->
+                | Error err ->
                     failwithf
                         "reducing commit failed even though we have not proposed any changes\
                         error: %A"
                         err
-                | CustomResult.Ok reduced -> reduced
+                | Ok reduced -> reduced
             let fees =
                 if this.LocalParams.IsFunder then
                     Transactions.commitTxFee this.RemoteParams.DustLimitSatoshis reduced

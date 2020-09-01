@@ -50,13 +50,13 @@ module Graph =
             let s = cltvDeltaFactor + ageFactor + capacityFactor
             if (s <= 0.|| 1. < s) then
                 sprintf "sum of CLTVDeltaFactor + ageFactor + capacityFactor must in between 0 to 1. it was %f" s
-                |> CustomResult.Error
+                |> Error
             else
                 {
                     CLTVDeltaFactor = cltvDeltaFactor
                     AgeFactor = ageFactor
                     CapacityFactor = capacityFactor
-                } |> CustomResult.Ok
+                } |> Ok
                 
     [<CustomComparison;CustomEquality>]           
     type WeightedNode = {
