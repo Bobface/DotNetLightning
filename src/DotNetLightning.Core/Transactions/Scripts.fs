@@ -5,6 +5,7 @@ open NBitcoin
 open NBitcoin.Crypto
 open DotNetLightning.Utils
 
+open ResultUtils
 
 module Scripts =
 
@@ -107,7 +108,7 @@ module Scripts =
         
     let checkIsValidFinalScriptPubKey(spk: Script) =
         if (isValidFinalScriptPubKey spk) then
-            Ok ()
+            CustomResult.Ok ()
         else
             sprintf "Invalid final script pubkey(%A). it must be one of p2pkh, p2sh, p2wpkh, p2wsh" spk
-            |> Error
+            |> CustomResult.Error

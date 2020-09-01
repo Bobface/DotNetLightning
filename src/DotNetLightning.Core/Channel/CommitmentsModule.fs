@@ -74,7 +74,7 @@ module internal Commitments =
             (commitmentInput: ScriptCoin)
             (localPerCommitmentPoint: CommitmentPubKey)
             (spec: CommitmentSpec)
-            n: Result<(CommitTx * HTLCTimeoutTx list * HTLCSuccessTx list), _> =
+            n: CustomResult.Result<(CommitTx * HTLCTimeoutTx list * HTLCSuccessTx list), _> =
             let channelKeys = localParams.ChannelPubKeys
             let pkGen = Generators.derivePubKey ctx localPerCommitmentPoint.PubKey
             let localPaymentPK = pkGen channelKeys.PaymentBasePubKey
@@ -131,7 +131,7 @@ module internal Commitments =
             let msgToSend: UpdateFulfillHTLCMsg =
                 { ChannelId = cm.ChannelId; HTLCId = op.Id; PaymentPreimage = op.PaymentPreimage }
             let newCommitments = cm.AddLocalProposal(msgToSend)
-            (msgToSend, newCommitments) |> Ok
+            (msgToSend, newCommitments) |> CustomResult.Ok
         | Some htlc ->
             (htlc.PaymentHash, op.PaymentPreimage)
             |> invalidPaymentPreimage
@@ -144,7 +144,7 @@ module internal Commitments =
         | Some htlc when htlc.PaymentHash = msg.PaymentPreimage.Hash ->
             let commitments = cm.AddRemoteProposal(msg)
             let origin = cm.OriginChannels |> Map.find(msg.HTLCId)
-            [WeAcceptedFulfillHTLC(msg, origin, htlc, commitments)] |> Ok
+            [WeAcceptedFulfillHTLC(msg, origin, htlc, commitments)] |> CustomResult.Ok
         | Some htlc ->
             (htlc.PaymentHash, msg.PaymentPreimage)
             |> invalidPaymentPreimage
@@ -169,7 +169,7 @@ module internal Commitments =
                           Reason = { Data = reason } }
                 let nextComitments = cm.AddLocalProposal(f)
                 [ WeAcceptedOperationFailHTLC(f, nextComitments) ]
-                |> Ok
+                |> CustomResult.Ok
         | None ->
             op.Id |> unknownHTLCId
 
@@ -179,7 +179,7 @@ module internal Commitments =
             result {
                 let! o =
                     match cm.OriginChannels.TryGetValue(msg.HTLCId) with
-                    | true, origin -> Ok origin
+                    | true, origin -> CustomResult.Ok origin
                     | false, _ ->
                         msg.HTLCId |> htlcOriginNowKnown
                 let nextC = cm.AddRemoteProposal(msg)
@@ -204,7 +204,7 @@ module internal Commitments =
                             FailureCode = op.FailureCode }
                 let nextCommitments = cm.AddLocalProposal(msg)
                 [ WeAcceptedOperationFailMalformedHTLC(msg, nextCommitments) ]
-                |> Ok
+                |> CustomResult.Ok
             | None ->
                 op.Id |> unknownHTLCId
 
@@ -217,7 +217,7 @@ module internal Commitments =
                 result {
                     let! o =
                         match cm.OriginChannels.TryGetValue(msg.HTLCId) with
-                        | true, o -> Ok o
+                        | true, o -> CustomResult.Ok o
                         | false, _ ->
                             msg.HTLCId |> htlcOriginNowKnown
                     let nextC = cm.AddRemoteProposal(msg)
@@ -317,16 +317,16 @@ module internal Commitments =
                 return [ WeAcceptedOperationSign (msg, nextCommitments) ]
             }
         | RemoteNextCommitInfo.Waiting _ ->
-            CanNotSignBeforeRevocation |> Error
+            CanNotSignBeforeRevocation |> CustomResult.Error
 
     let private checkSignatureCountMismatch(sortedHTLCTXs: IHTLCTx list) (msg) =
         if (sortedHTLCTXs.Length <> msg.HTLCSignatures.Length) then
             signatureCountMismatch (sortedHTLCTXs.Length, msg.HTLCSignatures.Length)
         else
-            Ok()
-    let receiveCommit (ctx) (keyRepo: IKeysRepository) (msg: CommitmentSignedMsg) (n: Network) (cm: Commitments): Result<ChannelEvent list, ChannelError> =
+            CustomResult.Ok()
+    let receiveCommit (ctx) (keyRepo: IKeysRepository) (msg: CommitmentSignedMsg) (n: Network) (cm: Commitments): CustomResult.Result<ChannelEvent list, ChannelError> =
         if cm.RemoteHasChanges() |> not then
-            ReceivedCommitmentSignedWhenWeHaveNoPendingChanges |> Error
+            ReceivedCommitmentSignedWhenWeHaveNoPendingChanges |> CustomResult.Error
         else
             let chanPrivateKeys = keyRepo.GetChannelKeys cm.LocalParams.IsFunder
             let commitmentSeed = chanPrivateKeys.CommitmentSeed
@@ -360,7 +360,7 @@ module internal Commitments =
 
                 let remoteHTLCPubKey = Generators.derivePubKey ctx (cm.RemoteParams.HTLCBasePoint) localPerCommitmentPoint.PubKey
 
-                let checkHTLCSig (htlc: IHTLCTx, remoteECDSASig: LNECDSASignature): Result<_, _> =
+                let checkHTLCSig (htlc: IHTLCTx, remoteECDSASig: LNECDSASignature): CustomResult.Result<_, _> =
                     let remoteS = TransactionSignature(remoteECDSASig.Value, SigHash.All)
                     match htlc with
                     | :? HTLCTimeoutTx ->

@@ -387,7 +387,7 @@ module Primitives =
             
         static member TryParse(s: string) =
             let items = s.Split('x')
-            let err = Error (sprintf "Failed to parse %s" s)
+            let err = CustomResult.Error (sprintf "Failed to parse %s" s)
             if (items.Length <> 3)  then err else
             match (items.[0] |> UInt32.TryParse), (items.[1] |> UInt32.TryParse), (items.[2] |> UInt16.TryParse) with
             | (true, h), (true, blockI), (true, outputI) ->
@@ -395,11 +395,11 @@ module Primitives =
                     BlockHeight = h |> BlockHeight
                     BlockIndex = blockI |> TxIndexInBlock
                     TxOutIndex = outputI |> TxOutIndex
-                } |> Ok
+                } |> CustomResult.Ok
             | _ -> err
         static member ParseUnsafe(s: string) =
             ShortChannelId.TryParse s
-            |> Result.defaultWith (fun _ -> raise <| FormatException(sprintf "Failed to parse %s" s))
+            |> ResultUtils.Result.defaultWith (fun _ -> raise <| FormatException(sprintf "Failed to parse %s" s))
 
     type UserId = UserId of uint64
     type Delimiter =

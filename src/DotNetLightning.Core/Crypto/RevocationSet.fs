@@ -4,6 +4,8 @@ open NBitcoin
 open NBitcoin.Crypto
 open DotNetLightning.Utils
 
+open ResultUtils
+
 type InsertRevocationKeyError =
     | UnexpectedCommitmentNumber of got: CommitmentNumber * expected: CommitmentNumber
     | KeyMismatch of previousCommitmentNumber: CommitmentNumber * newCommitmentNumber: CommitmentNumber
@@ -59,27 +61,27 @@ type RevocationSet private (keys: list<CommitmentNumber * RevocationKey>) =
 
     member this.InsertRevocationKey (commitmentNumber: CommitmentNumber)
                                     (revocationKey: RevocationKey)
-                                        : Result<RevocationSet, InsertRevocationKeyError> =
+                                        : CustomResult.Result<RevocationSet, InsertRevocationKeyError> =
         let nextCommitmentNumber = this.NextCommitmentNumber
         if commitmentNumber <> nextCommitmentNumber then
-            Error <| UnexpectedCommitmentNumber (commitmentNumber, nextCommitmentNumber)
+            CustomResult.Error <| UnexpectedCommitmentNumber (commitmentNumber, nextCommitmentNumber)
         else
             let rec fold (keys: list<CommitmentNumber * RevocationKey>)
-                             : Result<RevocationSet, InsertRevocationKeyError> =
+                             : CustomResult.Result<RevocationSet, InsertRevocationKeyError> =
                 if keys.IsEmpty then
                     let res = [commitmentNumber, revocationKey]
-                    Ok <| RevocationSet res
+                    CustomResult.Ok <| RevocationSet res
                 else
                     let storedCommitmentNumber, storedRevocationKey = keys.Head
                     match revocationKey.DeriveChild commitmentNumber storedCommitmentNumber with
                     | Some derivedRevocationKey ->
                         if derivedRevocationKey <> storedRevocationKey then
-                            Error <| KeyMismatch (storedCommitmentNumber, commitmentNumber)
+                            CustomResult.Error <| KeyMismatch (storedCommitmentNumber, commitmentNumber)
                         else
                             fold keys.Tail
                     | None ->
                         let res = (commitmentNumber, revocationKey) :: keys
-                        Ok <| RevocationSet res
+                        CustomResult.Ok <| RevocationSet res
             fold this.Keys
 
     member this.GetRevocationKey (commitmentNumber: CommitmentNumber)

@@ -7,6 +7,8 @@ open DotNetLightning.Core.Utils.Extensions
 open DotNetLightning.Utils
 open NBitcoin.Crypto
 
+open ResultUtils
+
 module private Helpers =
     let hex = DataEncoders.HexEncoder()   
     
@@ -29,7 +31,7 @@ type MacaroonIdentifier =
     static member CreateV0 hash =
         MacaroonIdentifierV0.Create hash |> V0
     static member TryCreateFromBytes(b: byte[]) =
-        let e = Error(sprintf "Invalid bytes for macaroon identifier %A" b) 
+        let e = CustomResult.Error(sprintf "Invalid bytes for macaroon identifier %A" b) 
         if (b.Length < 2) then e else
         match UInt16.FromBytesBigEndian(b.[0..1]) with
         | 0us ->
@@ -39,10 +41,10 @@ type MacaroonIdentifier =
                 TokenId = uint256(b.[34..], false)
             }
             |> V0
-            |> Ok
+            |> CustomResult.Ok
         | x ->
             UnknownVersion(x, b.[2..])
-            |> Ok
+            |> CustomResult.Ok
             
     member this.ToBytes() =
         match this with

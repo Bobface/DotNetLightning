@@ -114,7 +114,7 @@ module Peer =
             }
         | NoiseComplete, EncodeMsg (msg) ->
             state.ChannelEncryptor |> PeerChannelEncryptor.encryptMessage (msg.ToBytes())
-            |> (MsgEncoded >> List.singleton >> Ok)
+            |> (MsgEncoded >> List.singleton >> CustomResult.Ok)
         | s, cmd ->
             failwithf "Peer does not know how to handle %A while in noise step %A" cmd noiseStep
         

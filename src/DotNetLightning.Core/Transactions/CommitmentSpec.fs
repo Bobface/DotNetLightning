@@ -67,23 +67,23 @@ type CommitmentSpec = {
             match this.HTLCs |> Map.filter(fun k v  -> v.Direction <> direction) |>  Map.tryFind(htlcId), direction with
             | Some htlc, Out ->
                 { this with ToLocal = this.ToLocal + htlc.Add.Amount; HTLCs = this.HTLCs.Remove htlcId }
-                |> Ok
+                |> CustomResult.Ok
             | Some htlc, In ->
                 { this with ToRemote = this.ToRemote + htlc.Add.Amount; HTLCs = this.HTLCs.Remove htlcId }
-                |> Ok
+                |> CustomResult.Ok
             | None, _ ->
-                UnknownHTLC htlcId |> Error
+                UnknownHTLC htlcId |> CustomResult.Error
 
         member internal this.FailHTLC(direction: Direction, htlcId: HTLCId) =
             match this.HTLCs |> Map.filter(fun k v -> v.Direction <> direction) |> Map.tryFind (htlcId), direction with
             | Some htlc, Out ->
                 { this with ToRemote = this.ToRemote + htlc.Add.Amount; HTLCs = this.HTLCs.Remove htlcId }
-                |> Ok
+                |> CustomResult.Ok
             | Some htlc, In ->
                 { this with ToLocal = this.ToLocal + htlc.Add.Amount; HTLCs = this.HTLCs.Remove htlcId }
-                |> Ok
+                |> CustomResult.Ok
             | None, _ ->
-                UnknownHTLC htlcId |> Error
+                UnknownHTLC htlcId |> CustomResult.Error
 
         member internal this.Reduce(localChanges: #IUpdateMsg list, remoteChanges: #IUpdateMsg list) =
             let specMonoHopUnidirectionalPaymentLocal =
@@ -124,7 +124,7 @@ type CommitmentSpec = {
 
             let spec3RR =
                 localChanges
-                |> List.fold(fun (acc: Result<CommitmentSpec, TransactionError>) updateMsg ->
+                |> List.fold(fun (acc: CustomResult.Result<CommitmentSpec, TransactionError>) updateMsg ->
                             match box updateMsg with
                             | :? UpdateFulfillHTLCMsg as u ->
                                 acc >>= fun a -> a.FulfillHTLC(Out, u.HTLCId)
@@ -134,11 +134,11 @@ type CommitmentSpec = {
                                 acc >>= fun a -> a.FailHTLC(Out, u.HTLCId)
                             | _ -> acc
                         )
-                    (Ok spec2)
+                    (CustomResult.Ok spec2)
 
             let spec4RR =
                 remoteChanges
-                |> List.fold(fun (acc: Result<CommitmentSpec, TransactionError>) updateMsg ->
+                |> List.fold(fun (acc: CustomResult.Result<CommitmentSpec, TransactionError>) updateMsg ->
                             match box updateMsg with
                             | :? UpdateFulfillHTLCMsg as u ->
                                 acc >>= fun a -> a.FulfillHTLC(In, u.HTLCId)

@@ -18,8 +18,8 @@ module Result =
 
 [<RequireQualifiedAccess>]
 module List =
-  let private traverseTaskResultM' (f: 'c -> Task<Result<'a, 'b>>) (xs: 'c list) =
-    let mutable state = Ok []
+  let private traverseTaskResultM' (f: 'c -> Task<CustomResult.Result<'a, 'b>>) (xs: 'c list) =
+    let mutable state = CustomResult.Ok []
     let mutable index = 0
     let xs = xs |> List.toArray
     task {
@@ -27,10 +27,10 @@ module List =
             let! r = xs |> Array.item index |> f
             index <- index + 1 
             match (r, state) with
-            | Ok y, Ok ys ->
-                state <- Ok (y :: ys)
-            | Error e, _ ->
-                state <- Error e
+            | CustomResult.Ok y, CustomResult.Ok ys ->
+                state <- CustomResult.Ok (y :: ys)
+            | CustomResult.Error e, _ ->
+                state <- CustomResult.Error e
             | _, _ ->
                 ()
         return 
@@ -43,21 +43,21 @@ module List =
   let sequenceTaskResultM xs =
     traverseTaskResultM id xs
 
-  let private traverseTaskResultA' (f : 'c -> Task<Result<'a,'b>>) (xs : 'c list) =
-    let mutable state = Ok []
+  let private traverseTaskResultA' (f : 'c -> Task<CustomResult.Result<'a,'b>>) (xs : 'c list) =
+    let mutable state = CustomResult.Ok []
     
     task {
         for x in xs do
             let! r = f x 
             match (r, state) with
-            | Ok y, Ok ys ->
-                state <- Ok (y :: ys)
-            | Error e, Error errs ->
-                state <- Error (e :: errs)
-            | Ok _, Error e ->
-                state <- Error e
-            | Error e , Ok _  -> 
-                state <- Error [e]
+            | CustomResult.Ok y, CustomResult.Ok ys ->
+                state <- CustomResult.Ok (y :: ys)
+            | CustomResult.Error e, CustomResult.Error errs ->
+                state <- CustomResult.Error (e :: errs)
+            | CustomResult.Ok _, CustomResult.Error e ->
+                state <- CustomResult.Error e
+            | CustomResult.Error e , CustomResult.Ok _  -> 
+                state <- CustomResult.Error [e]
         return
             state
             |> Result.eitherMap List.rev List.rev

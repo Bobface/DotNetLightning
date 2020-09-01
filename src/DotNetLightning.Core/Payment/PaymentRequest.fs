@@ -25,32 +25,32 @@ module private Helpers =
     
     let base58CheckDecode data =
         try
-            base58check.DecodeData data |> Ok
+            base58check.DecodeData data |> CustomResult.Ok
         with
         | :? FormatException as fex ->
-            fex.ToString() |> Error
+            fex.ToString() |> CustomResult.Error
     let parseBitcoinAddress addr n =
         try
-            BitcoinAddress.Create(addr, n) |> Ok
+            BitcoinAddress.Create(addr, n) |> CustomResult.Ok
         with
         | :? FormatException as fex ->
-            fex.ToString() |> Error
+            fex.ToString() |> CustomResult.Error
     
     let tryGetP2WPKHAddressEncoder (n: Network) =
         let maybeEncoder = n.GetBech32Encoder(Bech32Type.WITNESS_PUBKEY_ADDRESS, false)
-        if isNull maybeEncoder then Error("Failed to get p2wpkh encoder") else Ok maybeEncoder
+        if isNull maybeEncoder then CustomResult.Error("Failed to get p2wpkh encoder") else CustomResult.Ok maybeEncoder
         
     let tryGetP2WSHAddressEncoder (n: Network) =
         let maybeEncoder = n.GetBech32Encoder(Bech32Type.WITNESS_SCRIPT_ADDRESS, false)
-        if isNull maybeEncoder then Error("Failed to get p2wsh encoder") else Ok maybeEncoder
+        if isNull maybeEncoder then CustomResult.Error("Failed to get p2wsh encoder") else CustomResult.Ok maybeEncoder
             
     let decodeBech32 s =
         try
             InternalBech32Encoder.Instance.DecodeData(s).ToTuple()
-            |> Ok
+            |> CustomResult.Ok
         with
         | :? FormatException as fex ->
-            fex.ToString() |> Error
+            fex.ToString() |> CustomResult.Error
             
     let encodeBech32 hrp s =
         InternalBech32Encoder.Instance.EncodeData(hrp, s, 0, s.Length)
@@ -83,9 +83,9 @@ module private Helpers =
         let maybePrefix = sortedPrefixValues |> Seq.filter(fun p -> hrp.StartsWith(p)) |> Seq.tryHead
         match maybePrefix with
         | None ->
-            Error(sprintf "Unknown prefix type %s! hrp must be either of %A" hrp sortedPrefixValues)
+            CustomResult.Error(sprintf "Unknown prefix type %s! hrp must be either of %A" hrp sortedPrefixValues)
         | Some(prefix) ->
-            Ok(prefix)
+            CustomResult.Ok(prefix)
         
     /// maxInvoiceLength is the maximum total length an invoice can have.
     /// This is chosen to be the maximum number of bytes that can fit into a
@@ -95,9 +95,9 @@ module private Helpers =
     
     let checkMaxInvoiceLength (invoice: string) =
         if invoice.Length <= maxInvoiceLength then
-            Ok()
+            CustomResult.Ok()
         else
-            Error(sprintf "Invoice length too large! max size is %d but it was %d" maxInvoiceLength invoice.Length)
+            CustomResult.Error(sprintf "Invoice length too large! max size is %d but it was %d" maxInvoiceLength invoice.Length)
             
     let uint64ToBase32(num: uint64):byte[] =
         if num = 0UL then [||] else
@@ -142,36 +142,36 @@ type FallbackAddress = private {
             | Helpers.PREFIX_ADDRESS_SCRIPTHASH | Helpers.PREFIX_ADDRESS_SCRIPTHASH_TESTNET ->
                 return { Version = 18uy; Data = addressHash }
             | x ->
-                return! Error(sprintf "Unknown address prefix %d" x)
+                return! CustomResult.Error(sprintf "Unknown address prefix %d" x)
         }
         
     static member FromBech32Address(addrStr: string, n: Network) =
             match Helpers.tryGetP2WPKHAddressEncoder(n) with
-            | Ok encoder ->
+            | CustomResult.Ok encoder ->
                 match encoder.Decode(addrStr) with
                 | decoded, witVersion ->
-                    { Version = witVersion; Data = decoded } |> Ok
-            | Error e ->
+                    { Version = witVersion; Data = decoded } |> CustomResult.Ok
+            | CustomResult.Error e ->
                 match Helpers.tryGetP2WSHAddressEncoder(n) with
-                | Ok encoder ->
+                | CustomResult.Ok encoder ->
                     match encoder.Decode(addrStr) with
-                    | decoded, witVersion -> { Version = witVersion; Data = decoded } |> Ok
-                | Error e2 ->
-                    e + e2 |> Error
+                    | decoded, witVersion -> { Version = witVersion; Data = decoded } |> CustomResult.Ok
+                | CustomResult.Error e2 ->
+                    e + e2 |> CustomResult.Error
     static member TryCreate(version, data: byte[]) =
         match version with
         // p2pkh
         | 17uy when data.Length = 20 ->
-            { Version = version; Data = data } |> Ok
+            { Version = version; Data = data } |> CustomResult.Ok
         // p2sh
         | 18uy when data.Length = 20 ->
-            { Version = version; Data = data } |> Ok
+            { Version = version; Data = data } |> CustomResult.Ok
         // p2wpkh or p2wsh
         | v when (data.Length = 20 || data.Length = 32) ->
-            { Version = v; Data = data } |> Ok
+            { Version = v; Data = data } |> CustomResult.Ok
         | v ->
             sprintf "Unknown combination of bitcoin address version and length! version %d. length: %d" v data.Length
-            |> Error
+            |> CustomResult.Error
             
     member this.ToAddress(prefix: string) =
         match this.Version with
@@ -310,25 +310,25 @@ type TaggedFields = {
         
     member this.CheckSanity() =
         let pHashes = this.Fields |> List.choose(function PaymentHashTaggedField x -> Some x | _ -> None)
-        if (pHashes.Length > 1) then "duplicate 'p' field" |> Error else
-        if (pHashes.Length < 1) then "no payment hash" |> Error else
+        if (pHashes.Length > 1) then "duplicate 'p' field" |> CustomResult.Error else
+        if (pHashes.Length < 1) then "no payment hash" |> CustomResult.Error else
         let secrets = this.Fields |> List.choose(function PaymentSecretTaggedField x -> Some (x) | _ -> None)
-        if (secrets.Length > 1) then "duplicate 's' field" |> Error else
+        if (secrets.Length > 1) then "duplicate 's' field" |> CustomResult.Error else
         if (secrets.Length = 1 && this.FeatureBit.IsNone) then
-            sprintf "secret (%A) is set but there were no feature bits" secrets.[0] |> Error
+            sprintf "secret (%A) is set but there were no feature bits" secrets.[0] |> CustomResult.Error
         else if (secrets.Length = 1 && not <| this.FeatureBit.Value.HasFeature(Feature.PaymentSecret)) then
             let fb = this.FeatureBit.Value
             sprintf "secret (%A) is set but feature bit (%s) is not set (%A)" (secrets.[0]) (fb.ToString()) (fb)
-            |> Error else
+            |> CustomResult.Error else
         if (secrets.Length = 0 && this.FeatureBit.IsSome && (this.FeatureBit.Value.HasFeature(Feature.PaymentSecret, Mandatory))) then
-            Error "feature bit for payment secret is set but payment secret is not set" else
+            CustomResult.Error "feature bit for payment secret is set but payment secret is not set" else
         let descriptions = this.Fields |> List.choose(function DescriptionTaggedField d -> Some d | _ -> None)
-        if (descriptions.Length > 1) then Error("duplicate 'd' field") else
+        if (descriptions.Length > 1) then CustomResult.Error("duplicate 'd' field") else
         let dHashes = this.Fields |> List.choose(function DescriptionHashTaggedField x -> Some x | _ -> None)
-        if (dHashes.Length > 1) then Error ("duplicate 'h' field") else
-        if (descriptions.Length = 1 && dHashes.Length = 1) then Error("both 'h' and 'd' field exists") else
-        if (descriptions.Length <> 1 && dHashes.Length <> 1) then Error("must have either description hash or description") else
-        () |> Ok
+        if (dHashes.Length > 1) then CustomResult.Error ("duplicate 'h' field") else
+        if (descriptions.Length = 1 && dHashes.Length = 1) then CustomResult.Error("both 'h' and 'd' field exists") else
+        if (descriptions.Length <> 1 && dHashes.Length <> 1) then CustomResult.Error("must have either description hash or description") else
+        () |> CustomResult.Ok
         |> Result.mapError(fun s -> "Invalid BOLT11! " + s)
 type private Bolt11Data = {
     Timestamp: DateTimeOffset
@@ -337,15 +337,15 @@ type private Bolt11Data = {
     Signature: (LNECDSASignature * byte) option
 }
     with
-    static member FromBytes(b: byte[]): Result<Bolt11Data, _> =
+    static member FromBytes(b: byte[]): CustomResult.Result<Bolt11Data, _> =
         result {
             let bitArray = BitArray.From5BitEncoding(b)
             let reader = BitReader(bitArray)
             reader.Position <- reader.Count - 520 - 30
             if (reader.Position < 0) then
-                return! sprintf "Invalid BOLT11: Invalid size. reader.Position was (%d)" reader.Position |> Error
+                return! sprintf "Invalid BOLT11: Invalid size. reader.Position was (%d)" reader.Position |> CustomResult.Error
             else if (not <| reader.CanConsume(65)) then
-                return! "Invalid BOLT11: Invalid size. could not consume 65" |> Error
+                return! "Invalid BOLT11: Invalid size. could not consume 65" |> CustomResult.Error
             else
                 let rs = reader.ReadBytes(65)
                 let signature = LNECDSASignature.FromBytesCompact(rs.[0..rs.Length - 2])
@@ -355,9 +355,9 @@ type private Bolt11Data = {
                 let timestamp = Utils.UnixTimeToDateTime(reader.ReadULongBE(35))
                 let checkSize (r: BitReader) c =
                     if (not <| r.CanConsume(c)) then
-                        Error(sprintf "Invalid BOLT11: Invalid size. could not consume %d" c)
+                        CustomResult.Error(sprintf "Invalid BOLT11: Invalid size. could not consume %d" c)
                     else
-                        Ok()
+                        CustomResult.Ok()
                 let rec loop (r: BitReader) (acc: TaggedFields) (skipTo: int) =
                     result {
                         do! r.SkipTo(skipTo)
@@ -441,7 +441,7 @@ type private Bolt11Data = {
                                     return! loop r ({ acc with Fields = dHash :: acc.Fields }) afterReadPosition
                             | 3UL -> // routing info
                                 if (size < ExtraHop.Size) then
-                                    return! sprintf "Unexpected length for routing info (%d)" size |> Error
+                                    return! sprintf "Unexpected length for routing info (%d)" size |> CustomResult.Error
                                 else
                                     let hopInfos = ResizeArray()
                                     while (size >= ExtraHop.Size) do
@@ -621,7 +621,7 @@ type PaymentRequest = private {
         let sign = signer.SignMessage(this.Hash)
         this.ToString(sign)
         
-    static member Parse(str: string): Result<PaymentRequest, string> =
+    static member Parse(str: string): CustomResult.Result<PaymentRequest, string> =
         result {
             do! Helpers.checkMaxInvoiceLength (str) // for DoS protection
             let mutable s = str.ToLowerInvariant() // assure reference transparency
@@ -629,7 +629,7 @@ type PaymentRequest = private {
                 s <- s.Substring("lightning:".Length)
             let! (hrp, data) = Helpers.decodeBech32(s)
             let! prefix = Helpers.checkAndGetPrefixFromHrp hrp
-            let maybeAmount = Amount.decode(hrp.Substring(prefix.Length)) |> function Ok s -> Some s | Error _ -> None
+            let maybeAmount = Amount.decode(hrp.Substring(prefix.Length)) |> function CustomResult.Ok s -> Some s | CustomResult.Error _ -> None
             
             let! bolt11Data = Bolt11Data.FromBytes(data)
             let (sigCompact, recv) = bolt11Data.Signature.Value
@@ -672,7 +672,7 @@ type PaymentRequest = private {
     /// signer must sign by node_secret which corresponds to node_id
     static member TryCreate (prefix: string, amount: LNMoney option, timestamp, nodeId, tags: TaggedFields, signer: IMessageSigner) =
         result {
-            do! amount |> function None -> Ok() | Some a -> Result.requireTrue "amount must be larger than 0" (a > LNMoney.Zero)
+            do! amount |> function None -> CustomResult.Ok() | Some a -> Result.requireTrue "amount must be larger than 0" (a > LNMoney.Zero)
             do! tags.CheckSanity()
             let r = {
                 Prefix = prefix

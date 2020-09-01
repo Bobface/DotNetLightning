@@ -10,26 +10,27 @@ open System
 open System.IO
 open System.IO.Compression
 
+open ResultUtils
 
 module Decoder =
     let private tryDecode (encodingType: EncodingType) (bytes : byte[]) =
-        if bytes.Length = 0 then bytes |> Ok else
+        if bytes.Length = 0 then bytes |> CustomResult.Ok else
         let data = bytes
         match encodingType with
         | EncodingType.SortedPlain ->
-            data |> Ok
+            data |> CustomResult.Ok
         | EncodingType.ZLib ->
             use ms = new MemoryStream(data)
             ms.Position <- 0L
             use ds = new DeflateStream(ms, CompressionMode.Decompress, true)
             use outputMs = new MemoryStream()
             ds.CopyTo(outputMs)
-            outputMs.ToArray() |> Ok
+            outputMs.ToArray() |> CustomResult.Ok
         | x ->
-            Error(sprintf "Unknown encoding type %A" x)
+            CustomResult.Error(sprintf "Unknown encoding type %A" x)
         
     let private unwrap b =
-        b |> function Ok x -> x | Error msg -> raise <| FormatException(msg)
+        b |> function CustomResult.Ok x -> x | CustomResult.Error msg -> raise <| FormatException(msg)
         
     let private bytesToShortIds (data: byte[]) =
         result {
@@ -38,7 +39,7 @@ module Decoder =
             if (remainder <> 0) then
                 return!
                     sprintf "Bogus encoded_ item! length of short_channel_ids must be multiple of 8. it was %d" data.Length
-                    |> Error
+                    |> CustomResult.Error
             else
                 return
                     data
@@ -86,7 +87,7 @@ module Decoder =
         result {
             if data.Length = 0 then return ([||]) else
             let div, rem = Math.DivRem(data.Length, 8)
-            if (rem <> 0) then return! Error(sprintf "bogus timestamps! %A" data) else
+            if (rem <> 0) then return! CustomResult.Error(sprintf "bogus timestamps! %A" data) else
             use ms = new MemoryStream(data)
             use ls = new LightningReaderStream(ms)
             let res = Array.zeroCreate div

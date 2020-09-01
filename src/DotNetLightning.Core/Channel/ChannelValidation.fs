@@ -76,7 +76,7 @@ module internal ChannelHelpers =
                           (localPerCommitmentPoint: CommitmentPubKey)
                           (remotePerCommitmentPoint: CommitmentPubKey)
                           (secpContext: ISecp256k1)
-                          (n: Network): Result<CommitmentSpec * CommitTx * CommitmentSpec * CommitTx, ChannelError> =
+                          (n: Network): CustomResult.Result<CommitmentSpec * CommitTx * CommitmentSpec * CommitTx, ChannelError> =
         let toLocal = if (localParams.IsFunder) then fundingSatoshis.ToLNMoney() - pushMSat else pushMSat
         let toRemote = if (localParams.IsFunder) then pushMSat else fundingSatoshis.ToLNMoney() - pushMSat
         let localSpec = CommitmentSpec.Create toLocal toRemote initialFeeRatePerKw
@@ -88,7 +88,7 @@ module internal ChannelHelpers =
             if missing < Money.Zero then
                 theyCannotAffordFee(toRemote, fees, localParams.ChannelReserveSatoshis)
             else
-                Ok()
+                CustomResult.Ok()
         let makeFirstCommitTxCore() =
             let scriptCoin = getFundingScriptCoin localParams.ChannelPubKeys
                                                   remoteParams.FundingPubKey
@@ -132,7 +132,7 @@ module internal ChannelHelpers =
                                           remoteSpec
                                           n
 
-            (localSpec, localCommitTx, remoteSpec, remoteCommitTx) |> Ok
+            (localSpec, localCommitTx, remoteSpec, remoteCommitTx) |> CustomResult.Ok
 
         if (not localParams.IsFunder) then
             result {

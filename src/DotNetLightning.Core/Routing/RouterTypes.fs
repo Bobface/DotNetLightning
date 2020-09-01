@@ -31,7 +31,7 @@ type RouterError =
     | RouteFindingError of string
 [<AutoOpen>]
 module internal RouterError =
-    let routeFindingError msg = RouteFindingError msg |> Error
+    let routeFindingError msg = RouteFindingError msg |> CustomResult.Error
 type RouterCommand =
     | ChannelEvent of ChannelEvent
     | NetworkEvent of NetworkEvent

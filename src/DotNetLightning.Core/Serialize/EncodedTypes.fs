@@ -2,14 +2,16 @@ namespace DotNetLightning.Serialize
 
 open System.IO
 
+open ResultUtils
+
 type QueryFlags = private QueryFlags of uint8
     with
     static member Create (data) = QueryFlags(data)
     static member TryCreate(data: uint64) =
         if data > 0xfcUL then
-            Error(sprintf "Too large query flag! It must be represented as 1 byte, but it was %A" data)
+            CustomResult.Error(sprintf "Too large query flag! It must be represented as 1 byte, but it was %A" data)
         else
-            QueryFlags(uint8 data) |> Ok
+            QueryFlags(uint8 data) |> CustomResult.Ok
     member private x.Value = let (QueryFlags v) = x in v
     member this.RequiresChannelAnnouncement =
         (this.Value &&& 0b00000001uy) = 1uy
@@ -32,9 +34,9 @@ type QueryOption = private QueryOption of uint8
     static member Create (data) = QueryOption(data)
     static member TryCreate(data: uint64) =
         if data > 0xfcUL then
-            Error(sprintf "Too large query flag! It must be represented as 1 byte, but it was %A" data)
+            CustomResult.Error(sprintf "Too large query flag! It must be represented as 1 byte, but it was %A" data)
         else
-            QueryFlags(uint8 data) |> Ok
+            QueryFlags(uint8 data) |> CustomResult.Ok
     member private x.Value = let (QueryOption v) = x in v
     member this.SenderWantsTimestamps =
         (this.Value &&& 0b00000001uy) = 1uy

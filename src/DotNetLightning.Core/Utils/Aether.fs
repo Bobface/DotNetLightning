@@ -1,5 +1,6 @@
 namespace DotNetLightning.Utils
 
+open ResultUtils
 
 module Aether =
     type Lens<'a, 'b> =
@@ -186,25 +187,25 @@ module Aether =
 
         [<RequireQualifiedAccess>]
         module Result =
-            let ok_: Prism<Result<_, _>, _> =
+            let ok_: Prism<CustomResult.Result<_, _>, _> =
                 (fun x ->
                     match x with
-                    | Ok v -> Some v
+                    | CustomResult.Ok v -> Some v
                     | _ -> None),
                 (fun v x ->
                     match x with
-                    | Ok _ -> Ok v
+                    | CustomResult.Ok _ -> CustomResult.Ok v
                     | _ -> x)
 
                     /// Prism to Error.
-            let error_: Prism<Result<_, _>, _> =
+            let error_: Prism<CustomResult.Result<_, _>, _> =
                 (fun x ->
                     match x with
-                    | Error v -> Some v
+                    | CustomResult.Error v -> Some v
                     | _ -> None),
                 (fun v x ->
                     match x with
-                    | Error _ -> Error v
+                    | CustomResult.Error _ -> CustomResult.Error v
                     | _ -> x)
 
 

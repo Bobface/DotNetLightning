@@ -29,8 +29,8 @@ type RouteParams = {
                 | false -> None
                 | true ->
                     match WeightRatios.TryCreate(conf.SearchRatioCLTV, conf.SearchRatioChannelAge, conf.SearchRatioChannelCapacity) with
-                    | Ok s -> Some s
-                    | Error _ -> None
+                    | CustomResult.Ok s -> Some s
+                    | CustomResult.Error _ -> None
         }
 
 type RouteRequest = private {
@@ -76,12 +76,12 @@ type RouteResponse = private {
     with
     static member TryCreate (hops: ChannelHop seq, ignoredNodes, ignoredChannels, ?allowEmpty) =
         let allowEmpty = Option.defaultValue false allowEmpty
-        if allowEmpty || (hops |> Seq.isEmpty |> not) then Error("Route cannot be empty") else
+        if allowEmpty || (hops |> Seq.isEmpty |> not) then CustomResult.Error("Route cannot be empty") else
         {
             Hops = hops
             IgnoredNodes = ignoredNodes
             IgnoredChannels = ignoredChannels
-        } |> Ok
+        } |> CustomResult.Ok
 
 type RoutingState = {
     Channels: PublicChannel seq

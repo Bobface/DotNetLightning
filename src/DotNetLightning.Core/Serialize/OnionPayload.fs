@@ -13,12 +13,12 @@ type OnionRealm0HopData = {
 }
     with
     static member FromBytes(bytes: byte[]) =
-        if bytes.Length < 20 then Error(sprintf "%A is not valid legacy payload format " bytes) else
+        if bytes.Length < 20 then CustomResult.Error(sprintf "%A is not valid legacy payload format " bytes) else
         let schId = bytes.[0..7] |> ShortChannelId.From8Bytes
         let amountToForward = bytes.[8..15] |> fun x -> Utils.ToUInt64(x, false) |> LNMoney.MilliSatoshis
         let outgoingCLTV = bytes.[16..19] |> fun x -> Utils.ToUInt32(x, false)
         { ShortChannelId = schId; AmtToForward = amountToForward; OutgoingCLTVValue = outgoingCLTV }
-        |> Ok
+        |> CustomResult.Ok
         
     member this.ToBytes() =
         let schid = this.ShortChannelId.ToBytes()
@@ -35,15 +35,15 @@ type OnionPayload =
         match bytes.[0] with
         | 0uy ->
             OnionRealm0HopData.FromBytes(bytes.[1..])
-            |> Result.map(Legacy)
+            |> ResultUtils.Result.map(Legacy)
         | _ ->
             result {
                 let! l, bytes = bytes.TryPopVarInt()
-                if (l > (uint64 Int32.MaxValue)) then return! Error(sprintf "length for onion paylaod is too long %A" l) else
+                if (l > (uint64 Int32.MaxValue)) then return! CustomResult.Error(sprintf "length for onion paylaod is too long %A" l) else
                 let l = int32 l
                 let! tlvs =
                     GenericTLV.TryCreateManyFromBytes(bytes.[0..(l - 1)])
-                    |> Result.map (Array.map(HopPayloadTLV.FromGenericTLV))
+                    |> ResultUtils.Result.map (Array.map(HopPayloadTLV.FromGenericTLV))
                 let hmac = uint256(bytes.[l..(l + 31)], false)
                 return (tlvs, hmac) |> TLVPayload
             }

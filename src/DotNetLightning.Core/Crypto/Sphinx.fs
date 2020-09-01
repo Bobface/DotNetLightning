@@ -8,6 +8,8 @@ open DotNetLightning.Utils
 open DotNetLightning.Serialize
 open DotNetLightning.Serialize.Msgs
 
+open ResultUtils
+
 module Sphinx =
     open NBitcoin.Crypto
 
@@ -104,14 +106,14 @@ module Sphinx =
         NextPacket: OnionPacket
         SharedSecret: byte[]
     }
-    let parsePacket (nodePrivateKey: Key) (ad: byte[]) (rawPacket: byte[]): Result<ParsedPacket, CryptoError> =
+    let parsePacket (nodePrivateKey: Key) (ad: byte[]) (rawPacket: byte[]): CustomResult.Result<ParsedPacket, CryptoError> =
         if (rawPacket.Length <> PACKET_LENGTH) then
              CryptoError.InvalidErrorPacketLength (PACKET_LENGTH, rawPacket.Length)
-            |> Error
+            |> CustomResult.Error
         else
             let packet = ILightningSerializable.fromBytes<OnionPacket>(rawPacket)
             if not (PubKey.Check(packet.PublicKey, true)) then
-                InvalidPublicKey(packet.PublicKey) |> Error
+                InvalidPublicKey(packet.PublicKey) |> CustomResult.Error
             else
                 let pk = packet.PublicKey |> PubKey
                 let ss = computeSharedSecret(pk, nodePrivateKey)
@@ -120,7 +122,7 @@ module Sphinx =
                     let msg = Array.concat (seq [ packet.HopData; ad ])
                     mac(mu, msg)
                 if check <> packet.HMAC then
-                    CryptoError.BadMac |> Error
+                    CryptoError.BadMac |> CustomResult.Error
                 else
                     let rho = generateKey("rho", ss)
                     let bin =
@@ -134,7 +136,7 @@ module Sphinx =
                     let nextPubKey = blind(pk) (computeBlindingFactor(pk) (new Key(ss)))
                     { ParsedPacket.Payload = payload
                       NextPacket = { Version = VERSION; PublicKey = nextPubKey.ToBytes(); HMAC= hmac; HopData = nextRouteInfo }
-                      SharedSecret = ss } |> Ok
+                      SharedSecret = ss } |> CustomResult.Ok
 
     /// Compute the next packet from the current packet and node parameters.
     /// Packets are constructed in reverse order:
@@ -220,16 +222,16 @@ module Sphinx =
     let private extractFailureMessage (packet: byte[]) =
         if (packet.Length <> ERROR_PACKET_LENGTH) then
             InvalidErrorPacketLength(ERROR_PACKET_LENGTH, packet.Length)
-            |> Error
+            |> CustomResult.Error
         else
             let (_mac, payload) = packet |> Array.splitAt(MacLength)
             let len = Utils.ToUInt16(payload.[0..1], false) |> int
             if (len < 0 || (len > MAX_ERROR_PAYLOAD_LENGTH)) then
                 InvalidMessageLength len
-                |> Error
+                |> CustomResult.Error
             else
                 let msg = payload.[2..2 + len - 1]
-                ILightningSerializable.fromBytes<FailureMsg>(msg) |> Ok
+                ILightningSerializable.fromBytes<FailureMsg>(msg) |> CustomResult.Ok
     type ErrorPacket = {
         OriginNode: NodeId
         FailureMsg: FailureMsg
@@ -254,15 +256,15 @@ module Sphinx =
                 let ssB = ss |> List.map(fun (k, pk) -> (k.ToBytes(), pk))
                 ErrorPacket.TryParse(packet, ssB)
 
-            static member TryParse(packet: byte[], ss: (byte[] * PubKey) list): Result<ErrorPacket, CryptoError> =
+            static member TryParse(packet: byte[], ss: (byte[] * PubKey) list): CustomResult.Result<ErrorPacket, CryptoError> =
                 if (packet.Length <> ERROR_PACKET_LENGTH) then
-                    InvalidErrorPacketLength (ERROR_PACKET_LENGTH, packet.Length) |> Error
+                    InvalidErrorPacketLength (ERROR_PACKET_LENGTH, packet.Length) |> CustomResult.Error
                 else
                     let rec loop (packet: byte[], ss: (byte[] * PubKey) list) =
                         match ss with
                         | [] ->
                             FailedToParseErrorPacket (packet, ss)
-                            |> Error
+                            |> CustomResult.Error
                         | (secret, pk)::tail ->
                             let packet1 = forwardErrorPacket(packet, secret)
                             if ((checkMac(secret, packet1))) then
@@ -270,7 +272,7 @@ module Sphinx =
                                 >>= fun msg ->
                                         { OriginNode = pk |> NodeId
                                           FailureMsg = msg }
-                                        |> Ok
+                                        |> CustomResult.Ok
                             else
                                 loop (packet1, tail)
                     loop(packet, ss)

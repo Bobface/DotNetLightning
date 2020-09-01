@@ -13,9 +13,9 @@ type GenericTLV = {
         result {
             let! ty, b = b.TryPopVarInt()
             let! l, b = b.TryPopVarInt()
-            if (l > (uint64 Int32.MaxValue)) then return! Error(sprintf "length for tlv is too long %A" l) else
+            if (l > (uint64 Int32.MaxValue)) then return! CustomResult.Error(sprintf "length for tlv is too long %A" l) else
             let l = l |> int32
-            if b.Length < l then return! Error (sprintf "malformed Generic TLV! bytes (%A) are shorter than specified length (%A)" b l) else
+            if b.Length < l then return! CustomResult.Error (sprintf "malformed Generic TLV! bytes (%A) are shorter than specified length (%A)" b l) else
             let value = b.[0..(l - 1)]
             return { Type = ty; Value = value }, b.[l..]
         }

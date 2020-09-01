@@ -14,6 +14,8 @@ open DotNetLightning.Core.Utils.Extensions
 
 open DotNetLightning.Serialize
 
+open ResultUtils
+
 // #region serialization
 type P2PDecodeError =
     | UnknownVersion
@@ -290,15 +292,15 @@ module ILightningSerializable =
         | x -> failwithf "%A is not known lightning message. This should never happen" x
 
 module LightningMsg =
-    let fromBytes<'T when 'T :> ILightningMsg>(b: byte[]): Result<_, P2PDecodeError> =
+    let fromBytes<'T when 'T :> ILightningMsg>(b: byte[]): CustomResult.Result<_, P2PDecodeError> =
         try
             use ms = new MemoryStream(b)
             use ls = new LightningReaderStream(ms)
             ILightningSerializable.deserializeWithFlag ls
-            |> Ok
+            |> CustomResult.Ok
         with
-        | :? EndOfStreamException as ex -> UnexpectedEndOfStream ex |> Error
-        | :? System.IO.IOException as ex -> P2PDecodeError.IO ex |> Error
+        | :? EndOfStreamException as ex -> UnexpectedEndOfStream ex |> CustomResult.Error
+        | :? System.IO.IOException as ex -> P2PDecodeError.IO ex |> CustomResult.Error
 
 [<Extension>]
 type ILightningMsgExtension() =
@@ -959,17 +961,17 @@ type NetAddress =
             let addr = ls.ReadBytes(4)
             let port = ls.ReadUInt16(false)
             IPv4 { Addr = addr; Port = port }
-            |> Ok
+            |> CustomResult.Ok
         | 2uy ->
             let addr = ls.ReadBytes(16)
             let port = ls.ReadUInt16((false))
             IPv6 { Addr = addr; Port = port }
-            |> Ok
+            |> CustomResult.Ok
         | 3uy ->
             let addr = ls.ReadBytes(10)
             let port = ls.ReadUInt16(false)
             OnionV2 { Addr = addr; Port = port }
-            |> Ok
+            |> CustomResult.Ok
         | 4uy ->
             let ed25519PK = ls.ReadBytes(32)
             let checkSum = ls.ReadUInt16(false)
@@ -981,9 +983,9 @@ type NetAddress =
                 Version = v
                 Port = port
             }
-            |> Ok
+            |> CustomResult.Ok
         | unknown ->
-            Result.Error (unknown)
+            CustomResult.Error (unknown)
 and IPv4Or6Data = {
     /// 4 byte in case of IPv4. 16 byes in case of IPv6
     Addr: byte[]
@@ -1001,7 +1003,7 @@ and OnionV3EndPoint = {
     Version: uint8
     Port: uint16
 }
-and NetAdddrSerilizationResult = Result<NetAddress, UnknownNetAddr>
+and NetAdddrSerilizationResult = CustomResult.Result<NetAddress, UnknownNetAddr>
 and UnknownNetAddr = byte
 
 
@@ -1035,28 +1037,28 @@ with
                 while addr_readPos < addrLen && (not foundUnknown) do
                     let addr = NetAddress.ReadFrom ls
                     ignore <| match addr with
-                              | Ok (IPv4 _) ->
+                              | CustomResult.Ok (IPv4 _) ->
                                   if addresses.Length > 0 then
                                       raise <| FormatException(sprintf "Extra Address per type %A" addresses)
-                              | Ok (IPv6 _) ->
+                              | CustomResult.Ok (IPv6 _) ->
                                   if addresses.Length > 1 || (addresses.Length = 1 && addresses.[0].GetId() <> 1uy) then
                                       raise <| FormatException(sprintf "Extra Address per type %A" addresses)
-                              | Ok(OnionV2 _) ->
+                              | CustomResult.Ok(OnionV2 _) ->
                                   if addresses.Length > 2 || (addresses.Length > 0 && addresses.[0].GetId() > 2uy) then
                                       raise <| FormatException(sprintf "Extra Address per type %A" addresses)
-                              | Ok(OnionV3 _) ->
+                              | CustomResult.Ok(OnionV3 _) ->
                                   if addresses.Length > 3 || (addresses.Length > 0 && addresses.[0].GetId() > 3uy) then
                                       raise <| FormatException(sprintf "Extra Address per type %A" addresses)
-                              | Result.Error v ->
+                              | CustomResult.Error v ->
                                   excessAddressDataByte <- v
                                   foundUnknown <- true
                                   addr_readPos <- addr_readPos + 1us
                     if (not foundUnknown) then
                         match addr with
-                        | Ok addr ->
+                        | CustomResult.Ok addr ->
                             addr_readPos <- addr_readPos + (1us + addr.Length)
                             addresses <- addr :: addresses
-                        | Result.Error _ -> failwith "Unreachable"
+                        | CustomResult.Error _ -> failwith "Unreachable"
                 addresses |> List.rev |> Array.ofList
             this.ExcessAddressData <-
                 if addr_readPos < addrLen then

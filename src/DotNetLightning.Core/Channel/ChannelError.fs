@@ -246,9 +246,9 @@ module private ValidationHelper =
     let check left predicate right msg =
         if predicate left right then
             sprintf msg left right
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
 /// Helpers to create channel error
 [<AutoOpen>]
@@ -262,36 +262,36 @@ module internal ChannelError =
         InvalidUpdateFeeError.Create
             msg
             [sprintf "delta is %.2f%% . But it must be lower than %.2f%%" (actualDelta * 100.0) (maxAccepted * 100.0)]
-            |> InvalidUpdateFee |> Error
+            |> InvalidUpdateFee |> CustomResult.Error
         
     let inline htlcAlreadySent htlcId =
-        htlcId |> HTLCAlreadySent |> Error
+        htlcId |> HTLCAlreadySent |> CustomResult.Error
         
     let inline invalidPaymentPreimage (e, a) =
-        (e, a) |> InvalidPaymentPreimage |> Error
+        (e, a) |> InvalidPaymentPreimage |> CustomResult.Error
         
     let inline unknownHTLCId x =
-        x |> UnknownHTLCId |> Error
+        x |> UnknownHTLCId |> CustomResult.Error
         
     let inline htlcOriginNowKnown x =
-        x |> HTLCOriginNotKnown |> Error
+        x |> HTLCOriginNotKnown |> CustomResult.Error
     let inline invalidFailureCode x =
-        x |> InvalidFailureCode |> Error
+        x |> InvalidFailureCode |> CustomResult.Error
         
     let inline apiMisuse x =
-        x |> APIMisuse |> Error
+        x |> APIMisuse |> CustomResult.Error
         
     let inline cannotAffordFee x =
-        x |> WeCannotAffordFee |> Error
+        x |> WeCannotAffordFee |> CustomResult.Error
     
     let inline signatureCountMismatch x =
-        x |> SignatureCountMismatch |> Error
+        x |> SignatureCountMismatch |> CustomResult.Error
         
     let inline theyCannotAffordFee x =
-        x |> TheyCannotAffordFee |> Error
+        x |> TheyCannotAffordFee |> CustomResult.Error
         
     let onceConfirmedFundingTxHasBecomeUnconfirmed (height, depth) =
-        (height, depth) |> OnceConfirmedFundingTxHasBecomeUnconfirmed |> Error
+        (height, depth) |> OnceConfirmedFundingTxHasBecomeUnconfirmed |> CustomResult.Error
     
     let expectTransactionError result =
         Result.mapError (List.singleton >> TransactionRelatedErrors) result
@@ -303,61 +303,61 @@ module internal ChannelError =
         Result.mapError(FundingTxNotGiven) msg
         
     let invalidRevokeAndACK msg e =
-        InvalidRevokeAndACKError.Create msg ([e]) |> InvalidRevokeAndACK |> Error
+        InvalidRevokeAndACKError.Create msg ([e]) |> InvalidRevokeAndACK |> CustomResult.Error
         
     let cannotCloseChannel msg =
-        msg |> CannotCloseChannel|> Error
+        msg |> CannotCloseChannel|> CustomResult.Error
 
     let receivedShutdownWhenRemoteHasUnsignedOutgoingHTLCs msg =
-        msg |> ReceivedShutdownWhenRemoteHasUnsignedOutgoingHTLCs |> Error
+        msg |> ReceivedShutdownWhenRemoteHasUnsignedOutgoingHTLCs |> CustomResult.Error
     let undefinedStateAndCmdPair state cmd =
-        UndefinedStateAndCmdPair (state, cmd) |> Error
+        UndefinedStateAndCmdPair (state, cmd) |> CustomResult.Error
         
     let checkRemoteProposedHigherFeeThanBefore prev curr =
         if (prev < curr) then
-            RemoteProposedHigherFeeThanBefore(prev, curr) |> Error
+            RemoteProposedHigherFeeThanBefore(prev, curr) |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 module internal OpenChannelMsgValidation =
     let checkMaxAcceptedHTLCs (msg: OpenChannelMsg) =
         if (msg.MaxAcceptedHTLCs < 1us) || (msg.MaxAcceptedHTLCs > 483us) then
             sprintf "max_accepted_htlcs must be in between %d and %d. But it was %d" 1us 483us msg.MaxAcceptedHTLCs
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
     let checkFundingSatoshisLessThanMax (msg: OpenChannelMsg) =
         if (msg.FundingSatoshis >= ChannelConstants.MAX_FUNDING_SATOSHIS) then
             sprintf "funding_satoshis must be less than %A. It was %A" ChannelConstants.MAX_FUNDING_SATOSHIS msg.FundingSatoshis
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
     let checkChannelReserveSatohisLessThanFundingSatoshis (msg: OpenChannelMsg) =
         if (msg.ChannelReserveSatoshis > msg.FundingSatoshis) then
             sprintf
                 "Bogus channel_reserve_satoshis (%A). Must be bigger than funding_satoshis(%A)"
                 msg.ChannelReserveSatoshis msg.FundingSatoshis
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
     let checkPushMSatLesserThanFundingValue msg =
         let fundingValue =(msg.FundingSatoshis - msg.ChannelReserveSatoshis)
         if (msg.PushMSat.ToMoney() > fundingValue) then
             sprintf
                 "push_msat(%A) larger than funding value(%A)"
                 msg.PushMSat fundingValue
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
     let checkFundingSatoshisLessThanDustLimitSatoshis (msg: OpenChannelMsg) =
         if (msg.DustLimitSatoshis > msg.FundingSatoshis) then
             sprintf
                 "The dust limit (%A) is larger than the funding amount (%A)"
                 msg.FundingSatoshis msg.DustLimitSatoshis
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
             
     let checkRemoteFee (feeEstimator: IFeeEstimator)
                        (remoteFeeRatePerKw: FeeRatePerKw)
@@ -369,16 +369,16 @@ module internal OpenChannelMsgValidation =
             sprintf
                 "Peer's feerate (%A) was unacceptably far from the estimated fee rate of %A"
                 remoteFeeRatePerKw localFeeRatePerKw
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
     let checkToSelfDelayIsInAcceptableRange (msg: OpenChannelMsg) =
         if msg.ToSelfDelay > (MAX_LOCAL_BREAKDOWN_TIMEOUT) then
             sprintf "They wanted our payments to be delayed by a needlessly long period (%A) ." msg.ToSelfDelay
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
 
     let checkConfigPermits (config: ChannelHandshakeLimits) (msg: OpenChannelMsg) =
@@ -415,9 +415,9 @@ module internal OpenChannelMsgValidation =
         let theirAnnounce = (msg.ChannelFlags &&& 1uy) = 1uy
         if (config.PeerChannelConfigLimits.ForceChannelAnnouncementPreference) && config.ChannelOptions.AnnounceChannel <> theirAnnounce then
             "Peer tried to open channel but their announcement preference is different from ours"
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
     let checkIsAcceptableByCurrentFeeRate (feeEstimator: IFeeEstimator) msg =
         let ourDustLimit = ChannelConstantHelpers.deriveOurDustLimitSatoshis feeEstimator
@@ -425,9 +425,9 @@ module internal OpenChannelMsgValidation =
         let check left predicate right msg =
             if predicate left right then
                 sprintf msg left right
-                |> Error
+                |> CustomResult.Error
             else
-                Ok()
+                CustomResult.Ok()
 
         let check1 =
             check
@@ -452,44 +452,44 @@ module internal OpenChannelMsgValidation =
             sprintf
                 "funding amount (%A) minus push amount (%A) does not cover commitment tx fee (%A)"
                 msg.FundingSatoshis msg.PushMSat fee
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
 module internal AcceptChannelMsgValidation =
     let private check left predicate right msg =
         if predicate left right then
             sprintf msg left right
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
     let checkMaxAcceptedHTLCs (msg: AcceptChannelMsg) =
         if (msg.MaxAcceptedHTLCs < 1us) || (msg.MaxAcceptedHTLCs > 483us) then
             sprintf "max_accepted_htlcs must be in between %d and %d. But it was %d" 1us 483us msg.MaxAcceptedHTLCs
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
     let checkDustLimit msg =
         if msg.DustLimitSatoshis > Money.Satoshis(21000000L * 100000L) then
             sprintf "Peer never wants payout outputs? dust_limit_satoshis was: %A" msg.DustLimitSatoshis
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
     let checkChannelReserveSatoshis (state: Data.WaitForAcceptChannelData) msg =
         if msg.ChannelReserveSatoshis > state.LastSent.FundingSatoshis then
             sprintf "bogus channel_reserve_satoshis %A . Must be larger than funding_satoshis %A" (msg.ChannelReserveSatoshis) (state.InputInitFunder.FundingSatoshis)
-            |> Error
+            |> CustomResult.Error
         else if msg.DustLimitSatoshis > state.LastSent.ChannelReserveSatoshis then
             sprintf "Bogus channel_reserve and dust_limit. dust_limit: %A; channel_reserve %A" msg.DustLimitSatoshis (state.LastSent.ChannelReserveSatoshis)
-            |> Error
+            |> CustomResult.Error
         else if msg.ChannelReserveSatoshis < state.LastSent.DustLimitSatoshis then
             sprintf "Peer never wants payout outputs? channel_reserve_satoshis are %A; dust_limit_satoshis in our last sent msg is %A" msg.ChannelReserveSatoshis (state.LastSent.DustLimitSatoshis)
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
     let checkDustLimitIsLargerThanOurChannelReserve (state: Data.WaitForAcceptChannelData) msg =
         check
@@ -499,16 +499,16 @@ module internal AcceptChannelMsgValidation =
     let checkMinimumHTLCValueIsAcceptable (state: Data.WaitForAcceptChannelData) (msg: AcceptChannelMsg) =
         if (msg.HTLCMinimumMSat.ToMoney() >= (state.LastSent.FundingSatoshis - msg.ChannelReserveSatoshis)) then
             sprintf "Minimum HTLC value is greater than full channel value HTLCMinimum %A satoshi; funding_satoshis %A; channel_reserve: %A" (msg.HTLCMinimumMSat.ToMoney()) (state.LastSent.FundingSatoshis) (msg.ChannelReserveSatoshis)
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
     let checkToSelfDelayIsAcceptable (msg) =
         if (msg.ToSelfDelay > MAX_LOCAL_BREAKDOWN_TIMEOUT) then
             sprintf "They wanted our payments to be delayed by a needlessly long period (%A)" msg.ToSelfDelay
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
     let checkConfigPermits (config: ChannelHandshakeLimits) (msg: AcceptChannelMsg) =
         let check1 = check msg.HTLCMinimumMSat (>) config.MaxHTLCMinimumMSat "HTLC Minimum msat in accept_channel (%A) is higher than the user specified limit (%A)"
@@ -534,9 +534,9 @@ module UpdateMonoHopUnidirectionalPaymentWithContext =
                     (currentSpec.ToRemote.ToMoney())
                     state.RemoteParams.ChannelReserveSatoshis
                     fees
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
 module UpdateAddHTLCValidation =
     let internal checkExpiryIsNotPast (current: BlockHeight) (expiry) =
@@ -564,9 +564,9 @@ module internal MonoHopUnidirectionalPaymentValidationWithContext =
                     (currentSpec.ToRemote.ToMoney())
                     state.RemoteParams.ChannelReserveSatoshis
                     fees
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
 module internal UpdateAddHTLCValidationWithContext =
     let checkLessThanHTLCValueInFlightLimit (currentSpec: CommitmentSpec) (limit) (add: UpdateAddHTLCMsg) =
@@ -576,9 +576,9 @@ module internal UpdateAddHTLCValidationWithContext =
                     htlcValueInFlight
                     limit
                     add.Amount
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 
     let checkLessThanMaxAcceptedHTLC (currentSpec: CommitmentSpec) (limit: uint16) =
         let acceptedHTLCs = currentSpec.HTLCs |> Map.toSeq |> Seq.filter (fun kv -> (snd kv).Direction = In) |> Seq.length
@@ -592,9 +592,9 @@ module internal UpdateAddHTLCValidationWithContext =
                     (currentSpec.ToRemote.ToMoney())
                     (state.RemoteParams.ChannelReserveSatoshis)
                     (fees)
-            |> Error
+            |> CustomResult.Error
         else
-            Ok()
+            CustomResult.Ok()
 module internal UpdateFeeValidation =
     let checkFeeDiffTooHigh (msg: UpdateFeeMsg) (localFeeRatePerKw: FeeRatePerKw) (maxFeeRateMismatchRatio) =
         let remoteFeeRatePerKw = msg.FeeRatePerKw
@@ -603,4 +603,4 @@ module internal UpdateFeeValidation =
             (diff, maxFeeRateMismatchRatio)
             |> feeDeltaTooHigh msg
             else
-                Ok ()
+                CustomResult.Ok ()

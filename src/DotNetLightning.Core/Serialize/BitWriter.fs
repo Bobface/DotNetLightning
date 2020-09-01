@@ -5,6 +5,8 @@ open System.Collections
 open System.Text
 open System.Text
 
+open ResultUtils
+
 type BitReader(ba: BitArray, bitCount: int) =
     
     member val Count = bitCount with get
@@ -51,10 +53,10 @@ type BitReader(ba: BitArray, bitCount: int) =
     member this.SkipTo(position: int) =
         let skip = position - this.Position
         if skip < 0 then
-            sprintf "Could not skip BitReader from %d to %d" this.Position position |> Error
+            sprintf "Could not skip BitReader from %d to %d" this.Position position |> CustomResult.Error
         else
             this.Consume(skip)
-            Ok()
+            CustomResult.Ok()
         
     member this.CanConsume(bitCount: int) =
         this.Position + bitCount <= this.Count

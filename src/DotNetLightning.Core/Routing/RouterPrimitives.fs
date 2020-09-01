@@ -13,7 +13,7 @@ module RouterPrimitives =
     let checkUpdate(x: ChannelUpdateMsg option, msg ) =
         match x with
         | Some x -> Result.requireTrue msg (x.IsNode1)
-        | None -> Ok()
+        | None -> CustomResult.Ok()
         
     let isNode1(localNodeId: NodeId, remoteNodeId: NodeId) =
         localNodeId > remoteNodeId

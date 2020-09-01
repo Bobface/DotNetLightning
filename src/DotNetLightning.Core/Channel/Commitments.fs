@@ -8,6 +8,8 @@ open DotNetLightning.Crypto
 open DotNetLightning.Transactions
 open DotNetLightning.Serialize.Msgs
 
+open ResultUtils
+
 type LocalChanges = {
     Proposed: IUpdateMsg list
     Signed: IUpdateMsg list
@@ -196,12 +198,12 @@ type Commitments = {
                 )
             let reduced =
                 match reducedRes with
-                | Error err ->
+                | CustomResult.Error err ->
                     failwithf
                         "reducing commit failed even though we have not proposed any changes\
                         error: %A"
                         err
-                | Ok reduced -> reduced
+                | CustomResult.Ok reduced -> reduced
             let fees =
                 if this.LocalParams.IsFunder then
                     Transactions.commitTxFee this.RemoteParams.DustLimitSatoshis reduced

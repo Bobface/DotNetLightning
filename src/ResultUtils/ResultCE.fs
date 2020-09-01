@@ -8,7 +8,7 @@ module ResultCE =
     member __.Return (v: 'T) : CustomResult.Result<'T, 'TError> =
       CustomResult.Ok v
 
-    member __.ReturnFrom (result: Result<'T, 'TError>) : Result<'T, 'TError> =
+    member __.ReturnFrom (result: CustomResult.Result<'T, 'TError>) :CustomResult. Result<'T, 'TError> =
       result
 
     member this.Zero () : CustomResult.Result<unit, 'TError> =

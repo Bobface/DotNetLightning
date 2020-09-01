@@ -124,7 +124,7 @@ module internal Feature =
                             (f.ToString())
                             (printDeps deps features)
                         |> FeatureError.BogusFeatureDependency
-                        |> Error
+                        |> CustomResult.Error
                 else
                     return ()
         }
@@ -190,7 +190,7 @@ type FeatureBit private (bitArray) =
                 return!
                     sprintf "feature bits (%s) contains a mandatory flag that we don't know!" (ba.PrintBits())
                     |> FeatureError.UnknownRequiredFeature
-                    |> Error
+                    |> CustomResult.Error
             else
                 return (FeatureBit(ba))
         }
@@ -206,11 +206,11 @@ type FeatureBit private (bitArray) =
     static member CreateUnsafe(v: int64) =
         BitArray.FromInt64(v) |> FeatureBit.CreateUnsafe
         
-    static member private Unwrap(r: Result<FeatureBit, _>) =
+    static member private Unwrap(r: CustomResult.Result<FeatureBit, _>) =
         match r with
-        | Error(FeatureError.UnknownRequiredFeature(e))
-        | Error(FeatureError.BogusFeatureDependency(e)) -> raise <| FormatException(e)
-        | Ok fb -> fb
+        | CustomResult.Error(FeatureError.UnknownRequiredFeature(e))
+        | CustomResult.Error(FeatureError.BogusFeatureDependency(e)) -> raise <| FormatException(e)
+        | CustomResult.Ok fb -> fb
     /// Throws FormatException
     /// TODO: ugliness of this method is caused by binary serialization throws error instead of returning Result
     /// We should refactor serialization altogether at some point
