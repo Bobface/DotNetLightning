@@ -1,22 +1,27 @@
 namespace ResultUtils.Portability
+#if CustomResult
 [<StructuralEquality; StructuralComparison>]
 [<CompiledName("FSharpResult`2")>]
 [<Struct>]
 type Result<'T,'TError> = 
   | Ok of ResultValue:'T 
   | Error of ErrorValue:'TError
-
-  member this.ToFSharpCoreResult () =
-    match this with
-    | Ok o -> FSharp.Core.Result.Ok o
-    |Error e -> FSharp.Core.Result.Error e
+#endif
 
 namespace ResultUtils
-
 open ResultUtils.Portability
 
 [<RequireQualifiedAccess>]
 module Result =
+
+  let ToFSharpCoreResult res =
+#if CustomResult
+    match res with
+    | Ok o -> FSharp.Core.Result.Ok o
+    | Error e -> FSharp.Core.Result.Error e
+#else
+    res
+#endif
 
   let isOk x =
     match x with
