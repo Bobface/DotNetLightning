@@ -6,6 +6,11 @@ type Result<'T,'TError> =
   | Ok of ResultValue:'T 
   | Error of ErrorValue:'TError
 
+  member this.ToFSharpCoreResult () =
+    match this with
+    | Ok o -> FSharp.Core.Result.Ok o
+    |Error e -> FSharp.Core.Result.Error e
+
 namespace ResultUtils
 
 open ResultUtils.Portability
