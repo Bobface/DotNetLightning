@@ -1,8 +1,7 @@
 namespace ResultUtils.Portability
-#if CustomResult
+#if NoDUsAsStructs
 [<StructuralEquality; StructuralComparison>]
 [<CompiledName("FSharpResult`2")>]
-[<Struct>]
 type Result<'T,'TError> = 
   | Ok of ResultValue:'T 
   | Error of ErrorValue:'TError
@@ -15,7 +14,7 @@ open ResultUtils.Portability
 module Result =
 
   let ToFSharpCoreResult res =
-#if CustomResult
+#if NoDUsAsStructs
     match res with
     | Ok o -> FSharp.Core.Result.Ok o
     | Error e -> FSharp.Core.Result.Error e
